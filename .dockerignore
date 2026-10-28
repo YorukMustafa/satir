@@ -2,3 +2,6 @@ target
 data
 .env
 .git
+
+node_modules
+tests

@@ -13,3 +13,10 @@
 - Son frontend düzeltmeleri sonrası JavaScript sözdizimi kontrolü ve paketleme başarılı; backend testleri değişmedi.
 - Deneme hesapları ve örnek yazılar yalnız work/ altındaki önizleme veritabanındadır; ZIP ve JAR içermez.
 - Docker, gerçek PostgreSQL ve Render dağıtımı bu ortamda çalıştırılmadı. Ücretli kaynak oluşturulmadı.
+
+## Arayüz tamamlama doğrulaması
+
+- 21 DOM regresyon testi: logo ve arama temizliği, altı kategori, arama/URL, yorum taslağı korunması, taslakta kaydet düğmesi olmaması, film alanları, düzenleme, Enter ile taslak, erişim ekranları, yarışan istekler, yorum gönderme, çift tıklama, giriş sonrası kaydetme, hesap/çıkış, sayfalama hatası, 404 geri dönüşü, süresi dolan oturum ve ağ hatasından yeniden deneme.
+- 14 Java entegrasyon testiyle birlikte toplam 35 otomatik kontrol.
+- 390 px ve 1280 px genişliklerde yatay taşma yok; mobilde arama ve tüm kategoriler görünür.
+- Gerçek tarayıcı ile okuyucu, yazar ve admin akışları denendi; son kontrolde JavaScript hata kaydı görülmedi. Ayrıntılar ARAYUZ-KONTROL.md içinde.

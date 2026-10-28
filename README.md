@@ -29,7 +29,7 @@ Linux sunucuda Docker ve Compose kurulu olmalı. Alan adının A/AAAA kaydını 
 
 ```sh
 cp .env.example .env
-# .env içindeki DOMAIN ve DB_PASSWORD değerlerini gerçek değerlerle değiştir.
+# .env içindeki DOMAIN, DB_PASSWORD, ADMIN_EMAIL ve ADMIN_PASSWORD değerlerini değiştir.
 docker compose up -d --build
 ```
 
@@ -106,3 +106,16 @@ V2 migration eski serbest kayıt WRITER hesaplarını READER yapar; hesaplar ve 
 ## Render
 
 Adım adım kurulum için [RENDER-KURULUM.md](RENDER-KURULUM.md). Hazır `render.yaml` ücretli web servisi ve PostgreSQL tanımlar; kaynak oluştururken Render'ın gösterdiği ücreti kontrol et. Henüz canlı dağıtım yapılmadı.
+
+## Arayüz kontrolleri
+
+Logo/ana sayfa, kategori ve arama geçişleri; mobil arama; hesap sayfası; taslak/yayın, yorum ve kaydetme akışları tamamlandı. Ayrıntılı kayıt [ARAYUZ-KONTROL.md](ARAYUZ-KONTROL.md) dosyasında.
+
+Node 18+ ile yalnız geliştirme/test için:
+
+```sh
+npm ci
+npm test
+```
+
+Bu kontroller uygulamanın Node backend kullandığı anlamına gelmez; dağıtım Java/Docker ile çalışır.

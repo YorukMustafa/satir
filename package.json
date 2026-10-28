@@ -1,0 +1,12 @@
+{
+  "name": "satir-ui-checks",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Satır arayüzü için çevrimdışı regresyon kontrolleri; uygulama Node gerektirmez.",
+  "scripts": {
+    "test": "node --test tests/ui.test.cjs"
+  },
+  "devDependencies": {
+    "jsdom": "26.1.0"
+  }
+}
