@@ -1,0 +1,10 @@
+{$DOMAIN} {
+    encode gzip zstd
+    reverse_proxy app:8080
+    header {
+        X-Content-Type-Options nosniff
+        Referrer-Policy strict-origin-when-cross-origin
+        Content-Security-Policy "default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+        Strict-Transport-Security "max-age=31536000"
+    }
+}

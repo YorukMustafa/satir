@@ -1,0 +1,41 @@
+# Paid production template. Review Render's displayed costs before creating resources.
+services:
+  - type: web
+    name: satir-web
+    runtime: docker
+    region: frankfurt
+    plan: 0.5c-512mb
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/posts?page=0
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: render
+      - key: RENDER_DATABASE_URL
+        fromDatabase:
+          name: satir-db
+          property: connectionString
+      - key: DATABASE_USER
+        fromDatabase:
+          name: satir-db
+          property: user
+      - key: DATABASE_PASSWORD
+        fromDatabase:
+          name: satir-db
+          property: password
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: JAVA_TOOL_OPTIONS
+        value: -XX:MaxRAMPercentage=70
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+
+databases:
+  - name: satir-db
+    region: frankfurt
+    plan: 0.1c-256mb
+    databaseName: satir
+    user: satir
+    ipAllowList: []
