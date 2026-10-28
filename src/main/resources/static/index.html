@@ -13,7 +13,9 @@
   </head>
   <body>
     <header>
-      <a class="logo" href="#">satır<span>✳</span></a>
+      <a class="logo" href="#" aria-label="Satır ana sayfa"
+        >satır<span aria-hidden="true">✳</span></a
+      >
       <div class="search">
         <span>⌕</span
         ><input
@@ -22,12 +24,20 @@
           placeholder="Bir hikâye, bir fikir, bir film ara..."
         />
       </div>
-      <nav id="account"></nav>
+      <nav id="account" aria-label="Hesap menüsü"></nav>
     </header>
-    <main id="app"></main>
+    <div id="route-status" class="route-status" role="status" hidden>
+      Yükleniyor…
+    </div>
+    <main id="app" tabindex="-1"></main>
     <footer>
-      <a class="logo" href="#">satır<span>✳</span></a>
+      <a class="logo" href="#" aria-label="Satır ana sayfa"
+        >satır<span aria-hidden="true">✳</span></a
+      >
       <p>Biraz düşünce. Biraz sinema. Bolca hikâye.</p>
+      <div class="footer-links">
+        <a href="#about">Satır hakkında</a><a href="#">Ana sayfa ↑</a>
+      </div>
       <span>Bağımsız seslere açık bir alan. © 2026 Satır</span>
     </footer>
     <dialog id="modal"></dialog>
