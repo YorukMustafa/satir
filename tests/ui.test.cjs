@@ -432,3 +432,56 @@ test("Eski sayfalama isteğinin hatası yeni sayfanın numarasını değiştirme
   assert.equal(h.getPage(), 0);
   assert.match(d.title, /Teknoloji/);
 });
+
+test("Okumaya devam et yalnız başka yayımlanmış yazıları gösterir ve başlıkları güvenle işler", async (t) => {
+  const { h, d } = setup(t);
+  h.setApi(async (url) => {
+    if (url.includes("/comments")) return [];
+    if (url.startsWith("/posts?"))
+      return [
+        sample,
+        { ...sample, id: "next", title: "<img src=x onerror=alert(1)>" },
+        { ...sample, id: "draft", published: false },
+      ];
+    return sample;
+  });
+  await h.navigate("post/post-one");
+  await settle();
+  const box = d.querySelector("#related-posts");
+  assert.equal(box.hidden, false);
+  assert.equal(box.querySelectorAll("a").length, 1);
+  assert.equal(box.querySelector("a").getAttribute("href"), "#post/next");
+  assert.equal(box.querySelector("img"), null);
+  assert.match(box.textContent, /<img/);
+});
+test("Yavaş ilgili yazılar yanıtı yeni sayfayı değiştirmez", async (t) => {
+  const { h, d } = setup(t);
+  let complete;
+  h.setApi(async (url) => {
+    if (url.includes("/comments")) return [];
+    if (url.startsWith("/posts?"))
+      return new Promise((resolve) => {
+        complete = resolve;
+      });
+    return sample;
+  });
+  await h.navigate("post/post-one");
+  await h.navigate("about");
+  complete([{ ...sample, id: "next" }]);
+  await settle();
+  assert.match(d.title, /Satır hakkında/);
+  assert.equal(d.querySelector("#related-posts"), null);
+});
+test("İlgili yazılar bağlantısı çalışmasa da ana yazı ve yorumlar okunabilir", async (t) => {
+  const { h, d } = setup(t);
+  h.setApi(async (url) => {
+    if (url.includes("/comments")) return [];
+    if (url.startsWith("/posts?")) throw Error("Bağlantı hatası");
+    return sample;
+  });
+  await h.navigate("post/post-one");
+  await settle();
+  assert.equal(d.querySelector(".article h1").textContent, sample.title);
+  assert.ok(d.querySelector("#comment-count"));
+  assert.equal(d.querySelector("#related-posts").hidden, true);
+});
