@@ -92,34 +92,21 @@ async function init() {
 function account() {
   $("#account").innerHTML = user
     ? `<button data-action="bookmarks">Okuma listem</button>${canWrite() ? '<button data-action="mine">Yazılarım</button><button class="btn" data-action="write">＋ Yazı yaz</button>' : ""}${user.role === "ADMIN" ? '<button data-action="writers">Yazarlar</button>' : ""}<button data-action="account" title="Hesabım">${esc(user.name.split(" ")[0])} ◉</button>`
-    : '<button data-action="login">Giriş yap</button><button class="btn dark" data-action="register">Üye ol</button>';
+    : '<button data-action="login">Giriş yap</button><button class="btn dark" data-action="register">Aramıza katıl ↗</button>';
 }
-function bookmarkIcon(active = false) {
-  return `<svg viewBox="0 0 24 24" width="20" height="20" fill="${active ? "currentColor" : "none"}" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M6 4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V21l-6-4-6 4Z"/></svg>`;
-}
+const categorySymbols = {
+  BLOG: "¶",
+  FILM: "◉",
+  SERIES: "▤",
+  HISTORY: "◷",
+  TECH: "⌘",
+  SPORT: "↗",
+};
 function card(p) {
-  return `<article class="post-card ${p.category.toLowerCase()}"><div class="card-top"><span class="badge">${labels[p.category]}</span>${p.rating ? `<span class="rating">★ ${p.rating}<small>/10</small></span>` : ""}${p.published ? "" : '<span class="draft-label">Taslak</span>'}</div><a class="story-link" href="#post/${p.id}"><h2>${esc(p.title)}</h2><p>${esc(p.summary)}</p></a><div class="card-bottom"><div class="author"><span class="avatar">${esc(p.author_name[0])}</span><div><span>${esc(p.author_name)}</span><small>${date(p.created_at)} · ${read(p.body)} dk okuma</small></div></div>${p.published ? saveButton(p.id) : ""}</div></article>`;
+  return `<article class="post-card"><a class="thumb ${p.category.toLowerCase()}" href="#post/${p.id}" aria-label="${esc(p.title)}"><small>${labels[p.category]}</small><span class="symbol" aria-hidden="true">${categorySymbols[p.category]}</span><span class="cover-word">${p.rating ? p.rating + "<small>/10</small>" : "satır."}</span></a><div class="post-content"><div class="author"><span class="avatar">${esc(p.author_name[0])}</span>${esc(p.author_name)}${p.published ? "" : " · Taslak"}</div><a href="#post/${p.id}"><h2>${esc(p.title)}</h2><p>${esc(p.summary)}</p></a><div class="meta"><span>${date(p.created_at)} · ${read(p.body)} dk okuma</span>${p.rating ? `<span>★ ${p.rating}/10</span>` : ""}${p.published ? saveButton(p.id) : ""}</div></div></article>`;
 }
 function hero() {
-  return `<section class="hero"><div><span class="eyebrow">KEŞFET</span><h1>Bugün ne okumak istersin?</h1><p class="lead">Yeni bir fikir, iyi bir film, farklı bir bakış. İlgini çekeni bul.</p></div>${user ? '<a class="btn light" href="#bookmarks">Okuma listem ' + bookmarkIcon() + "</a>" : '<span class="reading-note"><span aria-hidden="true">✓</span> Yazıları üye olmadan okuyabilirsin.</span>'}</section>`;
-}
-function exploreTopics() {
-  const hints = {
-    BLOG: "Deneyimler, fikirler ve gündelik hayat.",
-    FILM: "Film yorumları ve izleme sonrası notlar.",
-    SERIES: "Bölümler, karakterler ve dizi yorumları.",
-    HISTORY: "Geçmişi bugüne bağlayan hikâyeler.",
-    TECH: "Teknoloji, dijital hayat ve yeni fikirler.",
-    SPORT: "Maçların ve skorların ötesindeki hikâyeler.",
-  };
-  return `<section class="explore-topics"><h2>İlgini çeken bir konu seç</h2><div class="explore-grid">${Object.entries(
-    labels,
-  )
-    .map(
-      ([k, v]) =>
-        `<a class="explore-topic ${k.toLowerCase()}" href="#category/${k}"><span class="topic-color" aria-hidden="true"></span><div><h3>${v}</h3><p>${hints[k]}</p></div><span class="topic-arrow" aria-hidden="true">↗</span></a>`,
-    )
-    .join("")}</div></section>`;
+  return `<section class="hero"><div class="hero-copy"><div class="eyebrow"><span class="dot"></span> BAĞIMSIZ BİR OKUMA ALANI</div><h1>Merakın varsa,<br><em>yerin burada.</em></h1><p class="lead">Bir filmin son sahnesinden hayatın küçük ayrıntılarına. <br>Dur, oku. Kendi bakış açına bir yenisini ekle.</p><button class="btn" data-action="${canWrite() ? "write" : "discover"}">${canWrite() ? "Kendi satırını yaz" : "Bir okuma molası ver"}<span aria-hidden="true">↗</span></button><span class="hero-footnote">Farklı konular. Ortak bir merak.</span></div><div class="hero-art" aria-hidden="true"><div class="notebook"><div class="notebook-top"><span>SATIR / AÇIK DEFTER</span><span>01 — ∞</span></div><div class="notebook-title">Her satırda<br>başka bir<br><em>ihtimal.</em></div><div class="notebook-lines"><i></i><i></i><i></i></div><div class="notebook-bottom">OKUMAYA YER AÇ.<span>↗</span></div></div><div class="margin-note">biraz dur.<br>biraz düşün.</div><span class="art-dot"></span></div></section>`;
 }
 async function home(append = false, version = viewVersion) {
   if (!append) page = 0;
@@ -136,8 +123,8 @@ async function home(append = false, version = viewVersion) {
   feed.push(...data);
   app.innerHTML =
     (category || query ? "" : hero()) +
-    `<section class="discovery"><div class="tabs" aria-label="Kategoriler">${[
-      ["", "Tümü"],
+    `<section class="discovery"><div class="section-label"><span class="eyebrow">MERAK ETTİĞİN YERDEN BAŞLA</span><span class="muted">Altı konu, sayısız bakış.</span></div><div class="tabs" aria-label="Kategoriler">${[
+      ["", "Bütün yazılar"],
       ["BLOG", "Blog"],
       ["FILM", "Filmler"],
       ["SERIES", "Diziler"],
@@ -146,34 +133,15 @@ async function home(append = false, version = viewVersion) {
       ["SPORT", "Spor"],
     ]
       .map(
-        ([v, l]) =>
-          `<button class="topic-tab ${category === v ? "active" : ""}" data-category="${v}" aria-pressed="${category === v}">${l}</button>`,
+        ([v, l], i) =>
+          `<button class="topic-tab ${v.toLowerCase()} ${category === v ? "active" : ""}" data-category="${v}" aria-pressed="${category === v}"><span class="topic-number">0${i + 1}</span><span>${l}</span><span class="topic-icon" aria-hidden="true">${categorySymbols[v] || "≡"}</span></button>`,
       )
       .join("")}</div></section>
-    ${!feed.length && !query && !category ? exploreTopics() : ""}<div class="layout"><section class="feed-section"><div class="feed-heading"><div><h2>${query ? "Arama sonuçları" : category ? labels[category] + " yazıları" : "Yeni yayımlananlar"}</h2>${category ? `<p class="category-description">${categoryDescriptions[category]}</p>` : ""}</div>${!query ? '<span class="feed-caption">En yeniden eskiye</span>' : ""}</div>${query ? `<div class="search-result"><p class="sub">“${esc(query)}” için sonuçlar</p><button data-action="clear-search">Aramayı temizle ×</button></div>` : ""}<div class="post-grid ${!category && !query ? "home-feed" : ""}">${feed.length ? feed.map(card).join("") : emptyFeed()}</div>${data.length === 20 ? '<button class="btn light loadmore" data-action="more">Daha fazla yazı</button>' : ""}</section></div>
-    <aside class="community"><div class="community-symbol" aria-hidden="true">${bookmarkIcon(true)}</div><div><h3>${canWrite() ? "Paylaşmaya değer bir fikrin mi var?" : "İyi bir yazıyı sonraya sakla."}</h3><p>${canWrite() ? "Yazı masanda yeni bir taslağa başla." : "Okuma listeni oluştur, sevdiğin yazılara yeniden dön."}</p></div><button class="btn" data-action="${canWrite() ? "write" : user ? "bookmarks" : "register"}">${canWrite() ? "Yazı yaz" : user ? "Okuma listem" : "Ücretsiz hesap oluştur"} <span aria-hidden="true">→</span></button></aside>`;
+    <div class="layout"><section class="feed-section"><div class="feed-heading"><div><span class="eyebrow">${category ? "KONU DEFTERİ" : "KENDİNE BİRKAÇ DAKİKA AYIR"}</span><h2>${category ? labels[category] : query ? "Arama sonuçları" : "Okuma molası"}<span class="heading-dot">.</span></h2></div>${!category && !query ? '<span class="feed-caption">Yeni yazılar, yeni pencereler.</span>' : ""}</div>${category ? `<p class="category-description">${categoryDescriptions[category]}</p>` : ""}${query ? `<div class="search-result"><p class="sub">“${esc(query)}” için sonuçlar</p><button data-action="clear-search">Aramayı temizle ×</button></div>` : ""}<div class="post-grid">${feed.length ? feed.map(card).join("") : emptyFeed()}</div>${data.length === 20 ? '<button class="btn light loadmore" data-action="more">Daha fazla yazı</button>' : ""}</section></div>
+    <aside class="community"><div class="community-intro"><span class="eyebrow">SATIR ARASI</span><h3>İyi bir yazı,<br>yeni bir pencere.</h3></div><div><p>İzlediklerimiz, öğrendiklerimiz, aklımıza takılanlar. Satır, farklı bakış açılarına aynı masada yer açar.</p><a class="text-link" href="#about">Satır’ı tanı <span>↗</span></a></div><div class="community-action"><p>${canWrite() ? "Aklındaki düşünceyi bir satıra dönüştür." : user ? "Sana iyi gelen yazıları bir arada tut." : "Bir sonraki okuma molanı kendine sakla."}</p><button class="btn light" data-action="${canWrite() ? "write" : user ? "bookmarks" : "register"}">${canWrite() ? "Yazmaya başla" : user ? "Okuma listem" : "Okuyucu olarak katıl"} <span>↗</span></button></div></aside>`;
   document.title = category
     ? labels[category] + " | Satır"
-    : "Satır — Oku, keşfet, paylaş.";
-}
-async function loadRelated(p, version) {
-  if (!p.published) return;
-  try {
-    const data = await api(
-      "/posts?category=" + encodeURIComponent(p.category) + "&page=0",
-    );
-    if (version !== viewVersion) return;
-    const box = $("#related-posts");
-    if (!box || box.dataset.postId !== p.id || !Array.isArray(data)) return;
-    const posts = data
-      .filter((item) => item.id !== p.id && item.published)
-      .slice(0, 3);
-    if (!posts.length) return;
-    box.innerHTML = `<h2>Bu konuda okumaya devam et</h2><div class="related-grid">${posts.map((item) => `<a class="related-card" href="#post/${item.id}"><span class="badge">${labels[item.category]}</span><h3>${esc(item.title)}</h3><p>${esc(item.summary)}</p><small>${read(item.body)} dk okuma <span aria-hidden="true">→</span></small></a>`).join("")}</div>`;
-    box.hidden = false;
-  } catch {
-    /* Optional recommendations never interrupt reading. */
-  }
+    : "Satır — Merakın varsa, yerin burada.";
 }
 async function detail(id, version = viewVersion) {
   const p = await api("/posts/" + id);
@@ -181,8 +149,7 @@ async function detail(id, version = viewVersion) {
   if (version !== viewVersion) return;
   current = p;
   document.title = p.title + " | Satır";
-  app.innerHTML = `<article class="article"><a class="sub" href="#">← Bütün yazılar</a><div class="eyebrow article-kicker">${labels[p.category].toLocaleUpperCase("tr-TR")}</div><h1>${esc(p.title)}</h1><p class="summary">${esc(p.summary)}</p><div class="author"><span class="avatar">${esc(p.author_name[0])}</span>${esc(p.author_name)} · ${date(p.created_at)} · ${read(p.body)} dk okuma ${p.published ? "" : "· Taslak"}</div>${p.rating ? `<div class="review-box"><b>${p.rating}<small>/10</small></b><span>${esc(p.work_title)}<br><small>${labels[p.category]} değerlendirmesi</small></span></div>` : ""}${p.spoiler ? '<p class="spoiler">⚑ Bu değerlendirme olay örgüsü hakkında spoiler içeriyor.</p>' : ""}<div class="body">${esc(p.body)}</div><div class="article-actions">${p.published ? saveButton(p.id, true) : ""}${canWrite() && user?.id === p.author_id ? `<button class="btn" data-action="edit">Düzenle</button><button class="btn light" data-action="delete">Yazıyı sil</button>` : ""}</div><section id="related-posts" class="related-posts" data-post-id="${p.id}" hidden></section>${p.published ? `<h2 id="comment-count">Satır arası · ${comments.length} yorum</h2><div id="comments">${commentsHtml(comments)}</div>${user ? '<form id="comment-form"><label>Sen ne düşünüyorsun?<textarea name="body" maxlength="2000" required rows="3" placeholder="Sohbete bir satır ekle..."></textarea></label><p class="error" role="alert"></p><button class="btn">Yorumu paylaş</button></form>' : '<button class="btn light" data-action="login">Yorum yapmak için giriş yap</button>'}` : ""}</article>`;
-  loadRelated(p, version);
+  app.innerHTML = `<article class="article"><a class="sub" href="#">← Bütün yazılar</a><div class="eyebrow article-kicker">${labels[p.category].toLocaleUpperCase("tr-TR")}</div><h1>${esc(p.title)}</h1><p class="summary">${esc(p.summary)}</p><div class="author"><span class="avatar">${esc(p.author_name[0])}</span>${esc(p.author_name)} · ${date(p.created_at)} · ${read(p.body)} dk okuma ${p.published ? "" : "· Taslak"}</div>${p.rating ? `<div class="review-box"><b>${p.rating}<small>/10</small></b><span>${esc(p.work_title)}<br><small>${labels[p.category]} değerlendirmesi</small></span></div>` : ""}${p.spoiler ? '<p class="spoiler">⚑ Bu değerlendirme olay örgüsü hakkında spoiler içeriyor.</p>' : ""}<div class="body">${esc(p.body)}</div><div class="article-actions">${p.published ? saveButton(p.id, true) : ""}${canWrite() && user?.id === p.author_id ? `<button class="btn" data-action="edit">Düzenle</button><button class="btn light" data-action="delete">Yazıyı sil</button>` : ""}</div>${p.published ? `<h2 id="comment-count">Satır arası · ${comments.length} yorum</h2><div id="comments">${commentsHtml(comments)}</div>${user ? '<form id="comment-form"><label>Sen ne düşünüyorsun?<textarea name="body" maxlength="2000" required rows="3" placeholder="Sohbete bir satır ekle..."></textarea></label><p class="error" role="alert"></p><button class="btn">Yorumu paylaş</button></form>' : '<button class="btn light" data-action="login">Yorum yapmak için giriş yap</button>'}` : ""}</article>`;
 }
 async function listing(kind, version = viewVersion) {
   if (!user) {
@@ -296,11 +263,11 @@ function accessView(message, login = true) {
 }
 function emptyFeed() {
   const searching = !!query;
-  return `<div class="empty-state"><span class="empty-icon">${searching ? "⌕" : "≡"}</span><h3>${searching ? "Bu aramada henüz bir satır yok." : category ? "Bu konuda henüz yazı yok." : "Henüz yazı yayımlanmadı."}</h3><p>${searching ? "Başka bir kelime dene veya aramayı temizleyip yazıları keşfet." : "Yayımlanan yazılar burada görünecek. Diğer kategorileri keşfedebilir" + (canWrite() ? " veya ilk yazıyı sen ekleyebilirsin." : ", beğendiklerini okuma listene ekleyebilirsin.")}</p>${searching ? '<button class="btn light" data-action="clear-search">Aramayı temizle</button>' : canWrite() ? '<a class="btn" href="#write">İlk yazıyı oluştur</a>' : category ? '<a class="btn light" href="#">Bütün yazılara dön</a>' : '<a class="btn light" href="#about">Satır’ı tanı</a>'}</div>`;
+  return `<div class="empty-state"><span class="empty-icon">${searching ? "⌕" : "✳"}</span><h3>${searching ? "Bu aramada henüz bir satır yok." : category ? labels[category] + " için ilk hikâye yolda." : "Her hikâye bir ilk satırla başlar."}</h3><p>${searching ? "Başka bir kelime dene veya aramayı temizleyip yazıları keşfet." : "Yayımlanan yazılar burada görünecek. Diğer kategorileri keşfedebilir" + (canWrite() ? " veya ilk yazıyı sen ekleyebilirsin." : ", beğendiklerini okuma listene ekleyebilirsin.")}</p>${searching ? '<button class="btn light" data-action="clear-search">Aramayı temizle</button>' : canWrite() ? '<a class="btn" href="#write">İlk yazıyı oluştur</a>' : category ? '<a class="btn light" href="#">Bütün yazılara dön</a>' : '<a class="btn light" href="#about">Satır’ı tanı</a>'}</div>`;
 }
 function saveButton(id, full = false) {
   const active = saved.has(id);
-  return `<button ${full ? 'class="btn light" data-save-label="true"' : ""} data-save="${id}" aria-pressed="${active}" aria-label="${active ? "Okuma listesinden kaldır" : "Okuma listesine kaydet"}">${full ? (active ? "Kaydedildi ✓" : "Okuma listeme ekle") : bookmarkIcon(active)}</button>`;
+  return `<button ${full ? 'class="btn light" data-save-label="true"' : ""} data-save="${id}" aria-pressed="${active}" aria-label="${active ? "Okuma listesinden kaldır" : "Okuma listesine kaydet"}">${full ? (active ? "Kaydedildi ✓" : "Okuma listeme ekle") : active ? "▣" : "♧"}</button>`;
 }
 function commentsHtml(comments) {
   return (
@@ -329,11 +296,13 @@ async function toggleSave(id) {
       "aria-label",
       active ? "Okuma listesinden kaldır" : "Okuma listesine kaydet",
     );
-    b.innerHTML = b.dataset.saveLabel
+    b.textContent = b.dataset.saveLabel
       ? active
         ? "Kaydedildi ✓"
         : "Okuma listeme ekle"
-      : bookmarkIcon(active);
+      : active
+        ? "▣"
+        : "♧";
   }
   toast(active ? "Okuma listene eklendi." : "Okuma listenden çıkarıldı.");
   if (location.hash.split("?")[0] === "#bookmarks") await route();
