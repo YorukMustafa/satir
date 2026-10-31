@@ -22,7 +22,7 @@ public class AdminBootstrap implements ApplicationRunner {
       @Value("${ADMIN_PASSWORD:}") String password) {
     this.db = db;
     this.encoder = encoder;
-    this.email = email.trim().toLowerCase();
+    this.email = email.trim().toLowerCase(java.util.Locale.ROOT);
     this.password = password;
   }
 
@@ -41,7 +41,7 @@ public class AdminBootstrap implements ApplicationRunner {
       throw new IllegalStateException(
           "ADMIN_EMAIL mevcut bir hesaba ait. İlk admin için kullanılmamış bir e-posta seç.");
     db.update(
-        "insert into members values(?,?,?,?,?)",
+        "insert into members(id,name,email,password,role,email_verified) values(?,?,?,?,?,true)",
         UUID.randomUUID().toString(),
         "Yönetici",
         email,

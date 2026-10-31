@@ -18,16 +18,23 @@ import org.springframework.web.server.ResponseStatusException;
 public class Api {
   final JdbcTemplate db;
   final PasswordEncoder passwords;
+  final EmailVerification verification;
 
-  Api(JdbcTemplate db, PasswordEncoder passwords) {
+  Api(JdbcTemplate db, PasswordEncoder passwords, EmailVerification verification) {
     this.db = db;
     this.passwords = passwords;
+    this.verification = verification;
   }
 
   record Registration(
       @NotBlank @Size(max = 80) String name,
       @NotBlank @Email @Size(max = 254) String email,
-      @Size(min = 10, max = 72) @NotNull String password) {}
+      @Size(min = 10, max = 72) @NotNull String password) {
+    Registration {
+      if (name != null) name = name.strip();
+      if (email != null) email = email.strip().toLowerCase(Locale.ROOT);
+    }
+  }
 
   record PostInput(
       @NotBlank @Size(max = 180) String title,
@@ -51,7 +58,22 @@ public class Api {
 
   Map<String, Object> member(Principal p) {
     if (p == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
-    return db.queryForMap("select id,name,email,role from members where email=?", p.getName());
+    return db.queryForMap(
+        "select id,name,email,role,email_verified from members where email=?", p.getName());
+  }
+
+  record VerifyInput(@NotBlank @Pattern(regexp = "[0-9a-f]{64}") String token) {}
+
+  @PostMapping("/email/verify")
+  Object verifyEmail(@Valid @RequestBody VerifyInput input) {
+    verification.verify(input.token());
+    return Map.of("message", "E-posta adresin doğrulandı. Giriş yapabilirsin.");
+  }
+
+  @PostMapping("/email/resend")
+  Object resendEmail(@Valid @RequestBody EmailInput input) {
+    verification.send(input.email().trim().toLowerCase(Locale.ROOT));
+    return Map.of("message", "Bu adresle doğrulanmamış bir hesap varsa yeni bağlantı gönderildi.");
   }
 
   @GetMapping("/csrf")
@@ -64,6 +86,7 @@ public class Api {
     return p == null ? Map.of() : member(p);
   }
 
+  @org.springframework.transaction.annotation.Transactional
   @PostMapping("/register")
   @ResponseStatus(HttpStatus.CREATED)
   Object register(@Valid @RequestBody Registration r) {
@@ -71,22 +94,24 @@ public class Api {
   }
 
   Object createAccount(Registration r, String role) {
+    verification.requireDelivery();
     if (r.password().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72)
       throw new ResponseStatusException(
           HttpStatus.BAD_REQUEST, "Şifre UTF-8 olarak en fazla 72 bayt olabilir");
     String id = id();
     try {
       db.update(
-          "insert into members values(?,?,?,?,?)",
+          "insert into members(id,name,email,password,role,email_verified) values(?,?,?,?,?,false)",
           id,
           r.name().trim(),
-          r.email().toLowerCase().trim(),
+          r.email().toLowerCase(Locale.ROOT).trim(),
           passwords.encode(r.password()),
           role);
     } catch (DataIntegrityViolationException e) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "Bu e-posta zaten kullanılıyor");
     }
-    return Map.of("id", id);
+    verification.send(r.email().toLowerCase(Locale.ROOT).trim());
+    return Map.of("id", id, "verificationRequired", true);
   }
 
   void admin(Principal p) {
@@ -98,9 +123,10 @@ public class Api {
   Object writers(Principal p) {
     admin(p);
     return db.queryForList(
-        "select id,name,email,role from members where role='WRITER' order by name");
+        "select id,name,email,role,email_verified from members where role='WRITER' order by name");
   }
 
+  @org.springframework.transaction.annotation.Transactional
   @PostMapping("/admin/writers")
   @ResponseStatus(HttpStatus.CREATED)
   Object addWriter(@Valid @RequestBody Registration r, Principal p) {
@@ -108,15 +134,23 @@ public class Api {
     return createAccount(r, "WRITER");
   }
 
-  record EmailInput(@NotBlank @Email @Size(max = 254) String email) {}
+  record EmailInput(@NotBlank @Email @Size(max = 254) String email) {
+    EmailInput {
+      if (email != null) email = email.strip().toLowerCase(Locale.ROOT);
+    }
+  }
 
   @PostMapping("/admin/writers/promote")
   Object promote(@Valid @RequestBody EmailInput r, Principal p) {
     admin(p);
-    String email = r.email().trim().toLowerCase();
-    if (db.update("update members set role='WRITER' where email=? and role='READER'", email) == 0)
+    String email = r.email().trim().toLowerCase(Locale.ROOT);
+    if (db.update(
+            "update members set role='WRITER' where email=? and role='READER' and"
+                + " email_verified=true",
+            email)
+        == 0)
       throw new ResponseStatusException(
-          HttpStatus.CONFLICT, "Bu e-postayla kayıtlı bir okuyucu bulunamadı.");
+          HttpStatus.CONFLICT, "Bu e-postayla doğrulanmış bir okuyucu bulunamadı.");
     return Map.of("message", "Yazar yetkisi verildi");
   }
 
@@ -140,17 +174,18 @@ public class Api {
 
   @GetMapping("/posts")
   Object posts(
-      @RequestParam(defaultValue = "") String q,
-      @RequestParam(defaultValue = "") String category,
-      @RequestParam(defaultValue = "0") @Min(0) int page) {
+      @RequestParam(defaultValue = "") @Size(max = 200) String q,
+      @RequestParam(defaultValue = "") @Pattern(regexp = "|BLOG|FILM|SERIES|HISTORY|TECH|SPORT")
+          String category,
+      @RequestParam(defaultValue = "0") @Min(0) @Max(10000) int page) {
     return db.queryForList(
         SELECT
             + "where p.published=true and (?='' or p.category=?) and (lower(p.title) like ? or"
             + " lower(p.summary) like ?) order by p.created_at desc limit 20 offset ?",
         category,
         category,
-        "%" + q.toLowerCase() + "%",
-        "%" + q.toLowerCase() + "%",
+        "%" + q.toLowerCase(Locale.ROOT) + "%",
+        "%" + q.toLowerCase(Locale.ROOT) + "%",
         Math.min(Math.max(page, 0), 10000) * 20);
   }
 
@@ -271,21 +306,5 @@ public class Api {
   @DeleteMapping("/bookmarks/{id}")
   void unsave(@PathVariable String id, Principal p) {
     db.update("delete from bookmarks where member_id=? and post_id=?", member(p).get("id"), id);
-  }
-
-  @ExceptionHandler(ResponseStatusException.class)
-  @ResponseBody
-  org.springframework.http.ResponseEntity<?> status(ResponseStatusException e) {
-    return org.springframework.http.ResponseEntity.status(e.getStatusCode())
-        .body(
-            Map.of("message", e.getReason() == null ? "İşlem gerçekleştirilemedi" : e.getReason()));
-  }
-
-  @ExceptionHandler(org.springframework.web.bind.MethodArgumentNotValidException.class)
-  @ResponseStatus(HttpStatus.BAD_REQUEST)
-  Object invalid() {
-    return Map.of(
-        "message",
-        "Alanları kontrol et. Başlık, özet ve içerik zorunlu; şifre en az 10 karakter olmalı.");
   }
 }
