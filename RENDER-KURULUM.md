@@ -10,15 +10,15 @@ Otomatik kurulum için Render ve Neon bağlantılarını bu sohbette tamamla. İ
 
 1. Neon hesabında Free plan altında `satir` PostgreSQL projesi oluştur. Uygulama için veritabanı, kullanıcı ve bağlantı bilgilerini al. Bölgeyi mümkünse Frankfurt seç.
 2. Render'da GitHub'daki `YorukMustafa/satir` deposundan `render.yaml` Blueprint'ini kur. Dosya yalnızca `plan: free` web servisi tanımlar; ücretli veritabanı kaynağı içermez.
-3. Aşağıdaki değerleri Render'ın **Environment** bölümüne gizli ortam değişkeni olarak ekle. Gerçek şifreleri GitHub'a, dosyalara veya bu kılavuza yazma.
+3. E-posta doğrulama güncellemesinde ayrıca APP_PUBLIC_URL, MAIL_FROM ve BREVO_API_KEY gerekir; gönderici kurulumu tamamlanmadan yeni sürümü dağıtma. Aşağıdaki değerleri Render'ın **Environment** bölümüne gizli ortam değişkeni olarak ekle. Gerçek şifreleri GitHub'a, dosyalara veya bu kılavuza yazma.
 
-| Değişken | İçerik |
-|---|---|
-| RENDER_DATABASE_URL | Neon'un verdiği `postgresql://...` bağlantı adresi |
-| DATABASE_USER | Neon veritabanı kullanıcısı |
-| DATABASE_PASSWORD | Neon veritabanı şifresi |
-| ADMIN_EMAIL | Siteye ilk admin olarak gireceğin e-posta |
-| ADMIN_PASSWORD | En az 10 karakter, UTF-8 olarak en fazla 72 bayt ilk admin şifresi |
+| Değişken            | İçerik                                                             |
+| ------------------- | ------------------------------------------------------------------ |
+| RENDER_DATABASE_URL | Neon'un verdiği `postgresql://...` bağlantı adresi                 |
+| DATABASE_USER       | Neon veritabanı kullanıcısı                                        |
+| DATABASE_PASSWORD   | Neon veritabanı şifresi                                            |
+| ADMIN_EMAIL         | Siteye ilk admin olarak gireceğin e-posta                          |
+| ADMIN_PASSWORD      | En az 10 karakter, UTF-8 olarak en fazla 72 bayt ilk admin şifresi |
 
 `SPRING_PROFILES_ACTIVE=render`, `COOKIE_SECURE=true` ve Java bellek ayarları Blueprint içinde hazırdır. `render` profili PostgreSQL bağlantısını JDBC biçimine dönüştürür ve TLS kullanır. Bu sırada veritabanı şeması Flyway ile otomatik kurulur.
 
@@ -27,7 +27,7 @@ Otomatik kurulum için Render ve Neon bağlantılarını bu sohbette tamamla. İ
 
 ## İlk admin ve yazar girişi
 
-Siteye üye olmak okuyucu hesabı açar. Yazarları yalnızca admin ekler. İlk admin, hiç admin yokken ADMIN_EMAIL ve ADMIN_PASSWORD ile oluşturulur. Sonraki deploy'larda bu değerler mevcut hesabı veya parolayı değiştirmez. İlk oluşturma sonrası admin ortam değişkenlerini kaldırabilirsin; hesap Neon'da korunur. Şifre sıfırlama akışı bu sürümde bulunmaz.
+Siteye üye olmak e-posta doğrulaması bekleyen okuyucu hesabı açar. Yazarları yalnızca admin ekler. İlk admin, hiç admin yokken ADMIN_EMAIL ve ADMIN_PASSWORD ile oluşturulur. Sonraki deploy'larda bu değerler mevcut hesabı veya parolayı değiştirmez. İlk oluşturma sonrası admin ortam değişkenlerini kaldırabilirsin; hesap Neon'da korunur. Şifre sıfırlama akışı bu sürümde bulunmaz.
 
 ## Ücretsiz planların sınırları
 
@@ -39,9 +39,10 @@ Render'ın kendi Free PostgreSQL hizmeti 30 gün sonra sona erdiği için bu yap
 
 Yayın sonrasında ana sayfa ve kategoriler oturumsuz açılmalı; admin girişi, yazar ekleme, yazı yayımlama, yorum ve okuma listesi denenmeli. Bir deploy/yeniden başlatma sonrası yazıların ve hesapların korunması kontrol edilmeli. Uygulama oturumları yeniden başlatmada bitebilir; kullanıcı tekrar giriş yapar.
 
-Bu kılavuzun güncellendiği aşamada Render ve Neon hesap bağlantıları bekleniyor; canlı URL henüz oluşturulmadı.
+Mevcut canlı adres: https://satir-yorukmustafa.onrender.com . E-posta doğrulama güncellemesi için önce [EPOSTA-KURULUM.md](EPOSTA-KURULUM.md) adımlarını tamamla.
 
 Resmi kaynaklar (31 Ekim 2026):
+
 - https://render.com/docs/free
 - https://render.com/docs/blueprint-spec
 - https://neon.com/pricing

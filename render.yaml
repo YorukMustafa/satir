@@ -27,3 +27,9 @@ services:
         sync: false
       - key: ADMIN_PASSWORD
         sync: false
+      - key: APP_PUBLIC_URL
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false

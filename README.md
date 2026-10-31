@@ -1,125 +1,93 @@
 # Satır
 
-Türkçe, Medium esintili blog ve film/dizi değerlendirme uygulaması. Spring Boot 3.5.16, Java 21, Spring Security, JDBC, Flyway; derleme gerektirmeyen responsive HTML/CSS/JavaScript arayüz. Frontend ve API aynı adresten sunulur.
+Blog, film/dizi değerlendirmesi, tarih, teknoloji ve spor yazıları için Türkçe yayın uygulaması. Spring Boot 4.0.9, Java 21, Spring Security, JDBC ve Flyway kullanır. HTML/CSS/JavaScript arayüzü aynı Spring uygulamasından sunulur; ayrı frontend sunucusu gerekmez. Koyu mod tercihi cihazda saklanır; defter/post-it hareketi reduced-motion ayarına uyar.
 
-## Özellikler
+Mevcut canlı adres: https://satir-yorukmustafa.onrender.com . Bu çalışma dalındaki e-posta doğrulama ve güvenlik güncellemesinin dağıtımı için [EPOSTA-KURULUM.md](EPOSTA-KURULUM.md) adımları tamamlanmalıdır.
 
-- Adminin oluşturduğu yazar hesapları ve herkese açık okuyucu kaydı, oturumla giriş/çıkış; BCrypt parolalar, CSRF koruması ve HttpOnly oturum çerezi.
-- Yazar: taslak kaydet, yayımla, düzenle, yayından taslağa al ve sil. Sadece kendi yazılarına erişim.
-- Blog/film/dizi/tarih/teknoloji/spor ayrımı, eser adı, 1–10 puan ve spoiler uyarısı.
-- Başlık/özet araması, kategori filtreleri, 20 öğelik sayfalama.
-- Okuyucu ve yazar için yorumlar, kalıcı okuma listesi.
-- Yazı içeriği düz metindir; kullanıcı HTML'i çalıştırılmaz. Görsel yükleme, zengin metin, e-posta doğrulama ve şifre sıfırlama bu sürümde yoktur.
-- Herkese açık kayıt her zaman READER oluşturur; istekle gönderilen role alanı yetki vermez. Yazar hesabını yalnız ADMIN oluşturur veya mevcut okuyucuyu yazar yapar. Yazarlar hesap yönetimine erişemez.
+## Hesaplar ve yayın
+
+- Herkese açık kayıt yalnız READER oluşturur. İstekte role göndermek yetki vermez.
+- İlk ADMIN, ADMIN_EMAIL / ADMIN_PASSWORD ortam değişkenleriyle yalnız bir kez oluşturulur. Sonraki açılışlar mevcut parolayı değiştirmez.
+- Yalnız ADMIN yazar ekleyebilir veya doğrulanmış okuyucuya yazar yetkisi verebilir.
+- Yeni okuyucu/yazar e-postasını doğrulamadan giriş yapamaz. Başlangıç yöneticisi hosting kurulumundan güvenilir hesap olarak erişir.
+- Yazarlar yalnız kendi yazılarını oluşturur, taslak kaydeder, yayımlar, düzenler ve siler.
+- Okuyucular yazıları kaydeder ve yayımlanmış yazılara yorum yapar. Taslaklar yalnız sahibine açıktır.
+- Yazı metinleri HTML olarak çalıştırılmaz. Görsel yükleme, zengin metin, hesap kurtarma ve moderasyon paneli bu sürümde bulunmaz.
 
 ## Yerelde çalıştırma
 
-Java 21+ ve Maven 3.6.3+:
+Java 21 ve Maven 3.6.3+:
 
 ```sh
 mvn verify
 mvn spring-boot:run
 ```
 
-http://localhost:8080 adresini aç. İlk okuyucu hesabını arayüzden oluştur. İlk admin için uygulamayı başlatmadan önce ADMIN_EMAIL ve ADMIN_PASSWORD ortam değişkenlerini tanımla. Admin hesabı varsa başlangıçta değiştirilmez. Varsayılan kullanıcı veya parola yoktur. Yerel veritabanı `data/` içinde H2 dosyasıdır; yeniden başlatınca kayıtlar korunur. `target/satir-1.0.0.jar` dosyası `java -jar target/satir-1.0.0.jar` ile de çalışır.
-
-## Canlıya alma — VPS + Docker Compose
-
-Linux sunucuda Docker ve Compose kurulu olmalı. Alan adının A/AAAA kaydını sunucuya yönlendir; 80 ve 443 portlarını aç. Bu klasörü sunucuya kopyala, ardından:
+http://localhost:8080 adresini aç. H2 dosyası `data/` içinde tutulur. Varsayılan hesap/parola yoktur. Mail ayarı olmadan anonim okuma ve tanımlanmış yönetici girişi çalışır; yeni kayıt/gönderim 503 döndürür. Gerçek kayıt için BREVO_API_KEY, MAIL_FROM ve APP_PUBLIC_URL tanımlanmalıdır. Yerelde APP_PUBLIC_URL `http://localhost:8080` olabilir; canlıda kök HTTPS adresi kullan.
 
 ```sh
-cp .env.example .env
-# .env içindeki DOMAIN, DB_PASSWORD, ADMIN_EMAIL ve ADMIN_PASSWORD değerlerini değiştir.
-docker compose up -d --build
+java -jar target/satir-1.0.0.jar
 ```
 
-Caddy otomatik HTTPS sertifikası alır. Uygulama/veritabanı portları internete açılmaz; trafik Caddy üzerinden geçer. `COOKIE_SECURE=true` HTTPS için gereklidir. `.env` dosyasını paylaşma. `docker compose logs -f app` ile logları izle.
+H2, Flyway ile doğrulanmış 2.3.232 sürümüne sabitlenmiştir. H2 2.4'e geçişte eski şema testinde kontrol kısıtı hatası gözlendi; üretim H2 kullanmaz.
 
-Yeni sürüm için kaynakları güncelledikten sonra `docker compose up -d --build`. Flyway şemayı sürümler; mevcut migration dosyasını değiştirme, yeni dosya ekle. Kalıcı verileri silmemek için `docker compose down -v` kullanma.
+## Ücretsiz yayın
 
-### Yedekleme ve geri yükleme
+Render Free üzerinde tek Docker web servisi, Neon Free üzerinde PostgreSQL kullanılır. [RENDER-KURULUM.md](RENDER-KURULUM.md) ve [EPOSTA-KURULUM.md](EPOSTA-KURULUM.md) adımlarını izle. Render'ın verdiği PORT kullanılır. Ortam değişkenleri:
 
-```sh
-docker compose exec -T db pg_dump -U satir satir > satir-backup.sql
-# Geri yüklemeden önce uygulamayı durdur; boş bir satir veritabanına yükle:
-docker compose stop app
-docker compose exec -T db psql -U satir satir < satir-backup.sql
-docker compose start app
-```
+| Değişken                          | Açıklama                               |
+| --------------------------------- | -------------------------------------- |
+| SPRING_PROFILES_ACTIVE            | Render'da `render`                     |
+| RENDER_DATABASE_URL               | Neon PostgreSQL URI'si; dosyaya yazma  |
+| DATABASE_USER / DATABASE_PASSWORD | Gizli veritabanı kimlik bilgileri      |
+| ADMIN_EMAIL / ADMIN_PASSWORD      | İlk yönetici; mevcut hesabı sıfırlamaz |
+| COOKIE_SECURE                     | HTTPS üzerinde `true`                  |
+| APP_PUBLIC_URL                    | Güvenilir kök HTTPS site adresi        |
+| MAIL_FROM                         | Brevo'da doğrulanmış gönderici         |
+| BREVO_API_KEY                     | Gizli API anahtarı                     |
 
-Yedekleri ayrı, güvenli bir konuma kopyala. Periyodik geri yükleme denemesi yap.
+Render Free hareketsizlikte uyur; ilk açılışta Render'ın yüklenme ekranı görülebilir. Oturumlar bellektedir; dağıtımda kullanıcı tekrar giriş yapar. Yazılar, hesaplar, yorumlar ve okuma listeleri Neon'da kalır. Çoklu uygulama örneği için ortak oturum ve istek sınırı deposu gerekir.
 
-### Harici PostgreSQL / PaaS
-
-Dockerfile ile Java uygulaması çalıştırabilen bir sağlayıcıya dağıtılabilir. Ortam değişkenleri:
-
-| Değişken          | Değer                                            |
-| ----------------- | ------------------------------------------------ |
-| DATABASE_URL      | `jdbc:postgresql://HOST:5432/DB?sslmode=require` |
-| DATABASE_USER     | Veritabanı kullanıcısı                           |
-| DATABASE_PASSWORD | Veritabanı parolası                              |
-| COOKIE_SECURE     | `true`                                           |
-| PORT              | Varsayılan `8080`                                |
-
-Sağlayıcının verdiği `postgres://` URL doğrudan JDBC URL değildir; yukarıdaki biçime çevir. TLS'i sağlayıcı/proxy sonlandırmalı. Oturumlar bellekte tutulur; yeniden başlatınca kullanıcılar tekrar giriş yapar. Bu sürüm tek uygulama örneği için hazırlanmıştır; çoklu örnekte ortak oturum deposu gerekir.
+VPS kurulumu için `compose.yml` ve Caddy yapılandırması bulunur. `.env.example` dosyasını `.env` olarak kopyalayıp tüm gerçek değerleri yalnız bu gizli dosyada ayarla. Compose dağıtımı bu ortamda Docker bulunmadığından çalıştırılarak doğrulanmamıştır. Kalıcı verileri silen `docker compose down -v` komutunu kullanma.
 
 ## API
 
-`GET /api/csrf` bir token ve header adı döndürür. Tüm POST/PUT/DELETE isteklerinde bu header ve oturum çerezi gönderilir. `POST /api/login`, `username` ve `password` form alanlarını alır. Başarılı giriş/çıkış 204 döndürür; tokenı sonrasında yeniden al.
+`GET /api/csrf` token ve header adını döndürür. Değişiklik yapan tüm isteklerde CSRF header'ı ve oturum çerezi gerekir. Login, `username` / `password` form alanlarıyla yapılır.
 
-| Yol                                | İşlev                                                            |
-| ---------------------------------- | ---------------------------------------------------------------- |
-| POST /api/register                 | name, email, password, her zaman READER (role alanı kullanılmaz) |
-| GET /api/me                        | Oturumdaki kullanıcı veya boş nesne                              |
-| POST /api/logout                   | Çıkış                                                            |
-| GET /api/posts?q=&category=&page=0 | Yayımlanan yazılar; kategori BLOG/FILM/SERIES/HISTORY/TECH/SPORT |
-| GET /api/posts/{id}                | Yazı; taslağı yalnız sahibi görür                                |
-| POST /api/posts                    | Yazar için oluşturma                                             |
-| PUT, DELETE /api/posts/{id}        | Sahibinin düzenlemesi/silmesi                                    |
-| GET /api/mine                      | Kullanıcının taslak ve yayınları                                 |
-| GET, POST /api/posts/{id}/comments | Yorum listele/ekle                                               |
-| GET /api/bookmarks                 | Okuma listesi                                                    |
-| PUT, DELETE /api/bookmarks/{id}    | Kaydet/kaldır                                                    |
+| Yol                                | İşlev                                             |
+| ---------------------------------- | ------------------------------------------------- |
+| POST /api/register                 | name, email, password → doğrulama bekleyen READER |
+| POST /api/email/verify             | E-postadaki tek kullanımlık tokenı onayla         |
+| POST /api/email/resend             | email → varsa doğrulanmamış hesaba yeni bağlantı  |
+| POST /api/login, /api/logout       | Giriş / çıkış; başarıda 204                       |
+| GET /api/me                        | Oturumdaki kullanıcı veya boş nesne               |
+| GET /api/posts?q=&category=&page=0 | Yayımlanan yazılar, 20'li sayfalama               |
+| GET /api/posts/{id}                | Yazı; taslağı yalnız sahibi görür                 |
+| POST /api/posts                    | Yetkili yazarın yeni yazısı                       |
+| PUT, DELETE /api/posts/{id}        | Sahibinin düzenlemesi/silmesi                     |
+| GET /api/mine                      | Kendi yayınları ve taslakları                     |
+| GET, POST /api/posts/{id}/comments | Yorumlar                                          |
+| GET /api/bookmarks                 | Okuma listesi                                     |
+| PUT, DELETE /api/bookmarks/{id}    | Kaydet / kaldır                                   |
+| GET, POST /api/admin/writers       | Adminin yazar listesi / yazar eklemesi            |
+| POST /api/admin/writers/promote    | Doğrulanmış okuyucuyu yazar yap                   |
 
-Yazı gövdesi: title, summary, body, category, workTitle, rating (null veya 1–10), spoiler, published. Film/dizide eser adı ve puan zorunludur.
+Kategori: BLOG, FILM, SERIES, HISTORY, TECH, SPORT. Film/dizide eser adı ve 1–10 puan zorunludur. JSON istekleri 512 KiB ile sınırlanır; arama 200 karakteri ve sayfa 10.000'i aşamaz.
 
-## Doğrulama ve sınırlar
-
-`mvn verify`: gerçek Spring context, H2 ve MockMvc ile kayıt, giriş/çıkış, CSRF, sahiplik, taslak gizliliği, okuyucu kısıtlaması, puan doğrulaması, yorum, kaydetme ve silme testleri.
-
-PostgreSQL/Docker dağıtımı için dosyalar hazırlanmıştır; bu ortamda Docker olmadığı için Compose dağıtımı çalıştırılarak doğrulanmamıştır. Canlı sunucu/alan adı bağlanmamıştır. Kamuya açık büyük bir yayından önce e-posta doğrulama, hesap kurtarma, moderasyon ve giriş denemesi sınırlaması eklenmelidir.
-
-Spring sürüm gereksinimleri: https://docs.spring.io/spring-boot/3.5/system-requirements.html
-CSRF dokümanı: https://docs.spring.io/spring-security/reference/servlet/exploits/csrf.html
-
-## Yeni yetkiler ve kategori sayfaları
-
-- `/#category/BLOG`, `/#category/FILM`, `/#category/SERIES`, `/#category/HISTORY`, `/#category/TECH`, `/#category/SPORT` herkesin okuyabildiği kategori sayfalarıdır.
-- `/#writers` yalnız adminin Yazarlar bölümüdür. API de rol denetimi yapar.
-- `GET /api/admin/writers`: yazar listesi; parola özeti döndürmez.
-- `POST /api/admin/writers`: name, email, password ile yeni WRITER hesabı oluşturur.
-- `POST /api/admin/writers/promote`: email ile mevcut READER hesabını WRITER yapar.
-- Admin de kendi yazılarını yayımlayabilir. Yazarlar yalnız kendi içeriklerini düzenleyip silebilir.
-
-V2 migration eski serbest kayıt WRITER hesaplarını READER yapar; hesaplar ve yazılar silinmez. Admin gerekli hesaplara Yazarlar bölümünden yeniden yetki verir. V1 dosyası değiştirilmemiştir.
-
-## Render
-
-Adım adım kurulum için [RENDER-KURULUM.md](RENDER-KURULUM.md). Hazır `render.yaml` yalnızca ücretsiz Render web servisi tanımlar. Veritabanı Neon Free PostgreSQL olarak bağlanır. Henüz canlı dağıtım yapılmadı.
-
-## Arayüz kontrolleri
-
-Logo/ana sayfa, kategori ve arama geçişleri; mobil arama; hesap sayfası; taslak/yayın, yorum ve kaydetme akışları tamamlandı. Ayrıntılı kayıt [ARAYUZ-KONTROL.md](ARAYUZ-KONTROL.md) dosyasında.
-
-Node 18+ ile yalnız geliştirme/test için:
+## Testler
 
 ```sh
+mvn verify
 npm ci
 npm test
 ```
 
-Bu kontroller uygulamanın Node backend kullandığı anlamına gelmez; dağıtım Java/Docker ile çalışır.
+Node yalnız test içindir. PostgreSQL 18 testleri, yalnız özel test veritabanı verildiğinde çalışır:
 
-## Ücretsiz yayın yapılandırması — 31 Ekim 2026
+```sh
+SATIR_TEST_POSTGRES_URL=jdbc:postgresql://127.0.0.1:15432/satir_audit mvn verify
+```
 
-Frontend ve backend tek Render Free servisi üzerinde; kalıcı veriler Neon Free PostgreSQL üzerinde çalışacak şekilde ayarlandı. Ücretli kaynak tanımı kaldırıldı. Bağlantı bilgileri ve ilk admin hesabı Render ortam değişkenlerinden alınır. Adımlar [RENDER-KURULUM.md](RENDER-KURULUM.md) içinde. Render/Neon bağlantısı ve dağıtım tamamlanmadan canlı yayın yapılmış sayılmaz.
+Bu URL yalnız yerel ve boş/disposable bir test veritabanı olmalıdır. Test kullanıcı adı postgres, parola boş olarak tanımlıdır; üretim adresini kullanma. Ortam değişkeni yoksa yalnız iki PostgreSQL testi atlanır; diğer backend testleri H2 ile çalışır.
+
+Güncel kapsam ve sınırlamalar [TEST-RESULTS.md](TEST-RESULTS.md) dosyasında. Tarama, bir güvenlik veya kullanılabilirlik garantisi değildir. Gerçek e-posta teslimi, gönderici kurulumu tamamlandıktan sonra ayrıca doğrulanmalıdır.

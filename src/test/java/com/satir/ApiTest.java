@@ -5,11 +5,11 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import java.util.Map;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
@@ -24,6 +24,30 @@ import org.springframework.test.web.servlet.MockMvc;
 class ApiTest {
   @Autowired MockMvc mvc;
   @Autowired ObjectMapper json;
+  @Autowired org.springframework.jdbc.core.JdbcTemplate db;
+  @Autowired RequestLimits limits;
+  @org.springframework.test.context.bean.override.mockito.MockitoBean VerificationMailer mailer;
+
+  @BeforeEach
+  void configureMailer() {
+    org.mockito.Mockito.when(mailer.configured()).thenReturn(true);
+    ((java.util.Map<?, ?>)
+            org.springframework.test.util.ReflectionTestUtils.getField(limits, "windows"))
+        .clear();
+  }
+
+  void verifyEmail(String email) throws Exception {
+    var link = org.mockito.ArgumentCaptor.forClass(String.class);
+    org.mockito.Mockito.verify(mailer, org.mockito.Mockito.atLeastOnce())
+        .sendVerification(org.mockito.ArgumentMatchers.eq(email), link.capture());
+    String token = link.getValue().split("token=")[1];
+    mvc.perform(
+            post("/api/email/verify")
+                .with(csrf())
+                .contentType("application/json")
+                .content(json.writeValueAsString(Map.of("token", token))))
+        .andExpect(status().isOk());
+  }
 
   String reg(String role) throws Exception {
     String email = java.util.UUID.randomUUID() + "@example.com";
@@ -45,6 +69,7 @@ class ApiTest {
                             "role",
                             role))))
         .andExpect(status().isCreated());
+    verifyEmail(email);
     return email;
   }
 
@@ -227,6 +252,7 @@ class ApiTest {
                               "role",
                               role))))
           .andExpect(status().isCreated());
+      verifyEmail(email);
       var reader = login(email);
       mvc.perform(get("/api/me").session(reader)).andExpect(jsonPath("$.role").value("READER"));
       mvc.perform(
