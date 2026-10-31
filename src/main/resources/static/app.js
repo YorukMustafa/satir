@@ -94,11 +94,19 @@ function account() {
     ? `<button data-action="bookmarks">Okuma listem</button>${canWrite() ? '<button data-action="mine">Yazılarım</button><button class="btn" data-action="write">＋ Yazı yaz</button>' : ""}${user.role === "ADMIN" ? '<button data-action="writers">Yazarlar</button>' : ""}<button data-action="account" title="Hesabım">${esc(user.name.split(" ")[0])} ◉</button>`
     : '<button data-action="login">Giriş yap</button><button class="btn dark" data-action="register">Aramıza katıl ↗</button>';
 }
+const categorySymbols = {
+  BLOG: "¶",
+  FILM: "◉",
+  SERIES: "▤",
+  HISTORY: "◷",
+  TECH: "⌘",
+  SPORT: "↗",
+};
 function card(p) {
-  return `<article class="post-card"><div><div class="author"><span class="avatar">${esc(p.author_name[0])}</span>${esc(p.author_name)}${p.published ? "" : " · Taslak"}</div><a href="#post/${p.id}"><h2>${esc(p.title)}</h2><p>${esc(p.summary)}</p></a><div class="meta"><span class="badge">${labels[p.category]}</span><span>${date(p.created_at)} · ${read(p.body)} dk okuma</span>${p.rating ? `<span>★ ${p.rating}/10</span>` : ""}${p.published ? saveButton(p.id) : ""}</div></div><a class="thumb ${p.category.toLowerCase()}" href="#post/${p.id}" aria-label="${esc(p.title)}"><span class="symbol">${p.category === "FILM" ? "◉" : p.category === "SERIES" ? "▥" : "✳"}</span><small>${labels[p.category]} / satır</small></a></article>`;
+  return `<article class="post-card"><a class="thumb ${p.category.toLowerCase()}" href="#post/${p.id}" aria-label="${esc(p.title)}"><small>${labels[p.category]}</small><span class="symbol" aria-hidden="true">${categorySymbols[p.category]}</span><span class="cover-word">${p.rating ? p.rating + "<small>/10</small>" : "satır."}</span></a><div class="post-content"><div class="author"><span class="avatar">${esc(p.author_name[0])}</span>${esc(p.author_name)}${p.published ? "" : " · Taslak"}</div><a href="#post/${p.id}"><h2>${esc(p.title)}</h2><p>${esc(p.summary)}</p></a><div class="meta"><span>${date(p.created_at)} · ${read(p.body)} dk okuma</span>${p.rating ? `<span>★ ${p.rating}/10</span>` : ""}${p.published ? saveButton(p.id) : ""}</div></div></article>`;
 }
 function hero() {
-  return `<section class="hero"><div><div class="eyebrow"><span class="dot"></span> KELİMELERİN BULUŞTUĞU YER</div><h1>Hikâyenin bir de<br><em>senin tarafın var.</em></h1><p class="lead">Aklından geçenleri yaz. İzlediklerinin izini sür.<br>İyi hikâyeler, paylaşılınca çoğalır.</p><button class="btn dark" data-action="${canWrite() ? "write" : "discover"}">${canWrite() ? "Kendi satırını yaz" : "Hikâyeleri keşfet"} <span>↗</span></button></div><div class="hero-art" aria-hidden="true"><div class="orbit"></div><div class="orbit two"></div><span class="star">✳</span><div class="art-card"><b>Bir<br>satır.</b><i></i><i></i><i></i></div><div class="ticket">Ve yeni bir bakış.</div><div class="art-note">OKU. DÜŞÜN. PAYLAŞ.</div></div></section>`;
+  return `<section class="hero"><div class="hero-copy"><div class="eyebrow"><span class="dot"></span> BAĞIMSIZ BİR OKUMA ALANI</div><h1>Merakın varsa,<br><em>yerin burada.</em></h1><p class="lead">Bir filmin son sahnesinden hayatın küçük ayrıntılarına. <br>Dur, oku. Kendi bakış açına bir yenisini ekle.</p><button class="btn" data-action="${canWrite() ? "write" : "discover"}">${canWrite() ? "Kendi satırını yaz" : "Bir okuma molası ver"}<span aria-hidden="true">↗</span></button><span class="hero-footnote">Farklı konular. Ortak bir merak.</span></div><div class="hero-art" aria-hidden="true"><div class="notebook"><div class="notebook-top"><span>SATIR / AÇIK DEFTER</span><span>01 — ∞</span></div><div class="notebook-title">Her satırda<br>başka bir<br><em>ihtimal.</em></div><div class="notebook-lines"><i></i><i></i><i></i></div><div class="notebook-bottom">OKUMAYA YER AÇ.<span>↗</span></div></div><div class="margin-note">biraz dur.<br>biraz düşün.</div><span class="art-dot"></span></div></section>`;
 }
 async function home(append = false, version = viewVersion) {
   if (!append) page = 0;
@@ -114,9 +122,9 @@ async function home(append = false, version = viewVersion) {
   if (!append) feed = [];
   feed.push(...data);
   app.innerHTML =
-    hero() +
-    `<div class="layout"><section><div class="tabs" aria-label="Kategoriler">${[
-      ["", "Senin için"],
+    (category || query ? "" : hero()) +
+    `<section class="discovery"><div class="section-label"><span class="eyebrow">MERAK ETTİĞİN YERDEN BAŞLA</span><span class="muted">Altı konu, sayısız bakış.</span></div><div class="tabs" aria-label="Kategoriler">${[
+      ["", "Bütün yazılar"],
       ["BLOG", "Blog"],
       ["FILM", "Filmler"],
       ["SERIES", "Diziler"],
@@ -125,24 +133,15 @@ async function home(append = false, version = viewVersion) {
       ["SPORT", "Spor"],
     ]
       .map(
-        ([v, l]) =>
-          `<button class="${category === v ? "active" : ""}" data-category="${v}" aria-pressed="${category === v}">${l}</button>`,
+        ([v, l], i) =>
+          `<button class="topic-tab ${v.toLowerCase()} ${category === v ? "active" : ""}" data-category="${v}" aria-pressed="${category === v}"><span class="topic-number">0${i + 1}</span><span>${l}</span><span class="topic-icon" aria-hidden="true">${categorySymbols[v] || "≡"}</span></button>`,
       )
-      .join(
-        "",
-      )}</div>${category ? `<div class="category-heading"><span class="eyebrow">KEŞFET</span><h2>${labels[category]}</h2><p>${categoryDescriptions[category]}</p></div>` : ""}${query ? `<div class="search-result"><p class="sub">“${esc(query)}” için sonuçlar</p><button data-action="clear-search">Aramayı temizle ×</button></div>` : ""}<div>${feed.length ? feed.map(card).join("") : emptyFeed()}</div>${data.length === 20 ? '<button class="btn light loadmore" data-action="more">Daha fazla yazı</button>' : ""}</section><aside><section class="aside-section"><h3>Yeni satırlarda</h3>${
-      feed
-        .slice(0, 3)
-        .map(
-          (p, i) =>
-            `<a class="rank" href="#post/${p.id}"><span>0${i + 1}</span><div><b>${esc(p.title)}</b><small>${esc(p.author_name)} · ${labels[p.category]}</small></div></a>`,
-        )
-        .join("") ||
-      '<p class="sub">Yeni yazılar yayımlandıkça burada görünecek.</p>'
-    }</section><section class="aside-section"><h3>Biraz keşfet</h3><div class="topics"><button data-category="FILM">Sinema</button><button data-category="SERIES">Dizi dünyası</button><button data-category="BLOG">Blog</button><button data-category="HISTORY">Tarih</button><button data-category="TECH">Teknoloji</button><button data-category="SPORT">Spor</button><button data-category="">Tüm hikâyeler ↗</button></div></section><section class="invite"><div class="eyebrow">SENİN SESİN, SENİN ALANIN</div><h3>Bir satırla başlar.</h3><p>Bir filmden geriye kalan his, bir fikrin ilk kıvılcımı… Burada hepsine yer var.</p><button class="btn light" data-action="${canWrite() ? "write" : user ? "bookmarks" : "register"}">${canWrite() ? "Yazmaya başla" : user ? "Okuma listem" : "Okuyucu olarak katıl"} ↗</button></section></aside></div>`;
+      .join("")}</div></section>
+    <div class="layout"><section class="feed-section"><div class="feed-heading"><div><span class="eyebrow">${category ? "KONU DEFTERİ" : "KENDİNE BİRKAÇ DAKİKA AYIR"}</span><h2>${category ? labels[category] : query ? "Arama sonuçları" : "Okuma molası"}<span class="heading-dot">.</span></h2></div>${!category && !query ? '<span class="feed-caption">Yeni yazılar, yeni pencereler.</span>' : ""}</div>${category ? `<p class="category-description">${categoryDescriptions[category]}</p>` : ""}${query ? `<div class="search-result"><p class="sub">“${esc(query)}” için sonuçlar</p><button data-action="clear-search">Aramayı temizle ×</button></div>` : ""}<div class="post-grid">${feed.length ? feed.map(card).join("") : emptyFeed()}</div>${data.length === 20 ? '<button class="btn light loadmore" data-action="more">Daha fazla yazı</button>' : ""}</section></div>
+    <aside class="community"><div class="community-intro"><span class="eyebrow">SATIR ARASI</span><h3>İyi bir yazı,<br>yeni bir pencere.</h3></div><div><p>İzlediklerimiz, öğrendiklerimiz, aklımıza takılanlar. Satır, farklı bakış açılarına aynı masada yer açar.</p><a class="text-link" href="#about">Satır’ı tanı <span>↗</span></a></div><div class="community-action"><p>${canWrite() ? "Aklındaki düşünceyi bir satıra dönüştür." : user ? "Sana iyi gelen yazıları bir arada tut." : "Bir sonraki okuma molanı kendine sakla."}</p><button class="btn light" data-action="${canWrite() ? "write" : user ? "bookmarks" : "register"}">${canWrite() ? "Yazmaya başla" : user ? "Okuma listem" : "Okuyucu olarak katıl"} <span>↗</span></button></div></aside>`;
   document.title = category
     ? labels[category] + " | Satır"
-    : "Satır — Hikâyenin bir de senin tarafın var.";
+    : "Satır — Merakın varsa, yerin burada.";
 }
 async function detail(id, version = viewVersion) {
   const p = await api("/posts/" + id);
@@ -196,7 +195,7 @@ function editor(p = {}) {
   window.scrollTo(0, 0);
 }
 function auth(mode = "login") {
-  modal.innerHTML = `<button class="close" data-action="close" aria-label="Kapat">×</button><a class="logo" href="#" aria-label="Satır ana sayfa">satır<span aria-hidden="true">✳</span></a><h2>${mode === "login" ? "Yeniden merhaba." : "Senin hikâyen burada."}</h2><p class="sub">${mode === "login" ? "Kaldığın satırdan devam et." : "Okumak, yazmak ve yeni bakış açıları keşfetmek için katıl."}</p><form id="auth-form" data-mode="${mode}">${mode === "register" ? '<label>Adın<input name="name" required maxlength="80" autocomplete="name"></label>' : ""}<label>E-posta<input type="email" name="email" required maxlength="254" autocomplete="email"></label><label>Şifre<input type="password" name="password" required minlength="${mode === "register" ? 10 : 1}" maxlength="72" autocomplete="${mode === "register" ? "new-password" : "current-password"}"></label>${mode === "register" ? '<small class="sub">Okuyucu hesabıyla keşfet, kaydet ve yorum yap. Yazar hesaplarını yalnızca yönetici oluşturur. Şifren en az 10 karakter olmalı.</small>' : ""}<p class="error" id="auth-error" role="alert"></p><button class="btn">${mode === "login" ? "Giriş yap" : "Hesap oluştur"}</button></form><button class="switch" data-action="${mode === "login" ? "register" : "login"}">${mode === "login" ? "Henüz hesabın yok mu? Aramıza katıl." : "Zaten hesabın var mı? Giriş yap."}</button>`;
+  modal.innerHTML = `<button class="close" data-action="close" aria-label="Kapat">×</button><a class="logo" href="#" aria-label="Satır ana sayfa">satır<span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span></a><h2>${mode === "login" ? "Yeniden merhaba." : "Senin hikâyen burada."}</h2><p class="sub">${mode === "login" ? "Kaldığın satırdan devam et." : "Okumak, yazmak ve yeni bakış açıları keşfetmek için katıl."}</p><form id="auth-form" data-mode="${mode}">${mode === "register" ? '<label>Adın<input name="name" required maxlength="80" autocomplete="name"></label>' : ""}<label>E-posta<input type="email" name="email" required maxlength="254" autocomplete="email"></label><label>Şifre<input type="password" name="password" required minlength="${mode === "register" ? 10 : 1}" maxlength="72" autocomplete="${mode === "register" ? "new-password" : "current-password"}"></label>${mode === "register" ? '<small class="sub">Okuyucu hesabıyla keşfet, kaydet ve yorum yap. Yazar hesaplarını yalnızca yönetici oluşturur. Şifren en az 10 karakter olmalı.</small>' : ""}<p class="error" id="auth-error" role="alert"></p><button class="btn">${mode === "login" ? "Giriş yap" : "Hesap oluştur"}</button></form><button class="switch" data-action="${mode === "login" ? "register" : "login"}">${mode === "login" ? "Henüz hesabın yok mu? Aramıza katıl." : "Zaten hesabın var mı? Giriş yap."}</button>`;
   if (!modal.open) modal.showModal();
 }
 async function writers(version = viewVersion) {
