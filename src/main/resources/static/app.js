@@ -49,10 +49,18 @@ async function api(url, method = "GET", data) {
   try {
     r = await fetch("/api" + url, {
       method,
+      signal:
+        typeof AbortSignal.timeout === "function"
+          ? AbortSignal.timeout(20000)
+          : undefined,
       headers,
       body: data ? JSON.stringify(data) : undefined,
     });
-  } catch {
+  } catch (error) {
+    if (["TimeoutError", "AbortError"].includes(error.name))
+      throw new Error(
+        "Sunucunun yanıt vermesi uzun sürdü. Biraz sonra yeniden dene.",
+      );
     throw new Error(
       "Sunucuya bağlanılamadı. Bağlantını kontrol edip yeniden dene.",
     );
@@ -195,8 +203,26 @@ function editor(p = {}) {
   window.scrollTo(0, 0);
 }
 function auth(mode = "login") {
-  modal.innerHTML = `<button class="close" data-action="close" aria-label="Kapat">×</button><a class="logo" href="#" aria-label="Satır ana sayfa">satır<span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span></a><h2>${mode === "login" ? "Yeniden merhaba." : "Senin hikâyen burada."}</h2><p class="sub">${mode === "login" ? "Kaldığın satırdan devam et." : "Okumak, yazmak ve yeni bakış açıları keşfetmek için katıl."}</p><form id="auth-form" data-mode="${mode}">${mode === "register" ? '<label>Adın<input name="name" required maxlength="80" autocomplete="name"></label>' : ""}<label>E-posta<input type="email" name="email" required maxlength="254" autocomplete="email"></label><label>Şifre<input type="password" name="password" required minlength="${mode === "register" ? 10 : 1}" maxlength="72" autocomplete="${mode === "register" ? "new-password" : "current-password"}"></label>${mode === "register" ? '<small class="sub">Okuyucu hesabıyla keşfet, kaydet ve yorum yap. Yazar hesaplarını yalnızca yönetici oluşturur. Şifren en az 10 karakter olmalı.</small>' : ""}<p class="error" id="auth-error" role="alert"></p><button class="btn">${mode === "login" ? "Giriş yap" : "Hesap oluştur"}</button></form><button class="switch" data-action="${mode === "login" ? "register" : "login"}">${mode === "login" ? "Henüz hesabın yok mu? Aramıza katıl." : "Zaten hesabın var mı? Giriş yap."}</button>`;
+  modal.innerHTML = `<button class="close" data-action="close" aria-label="Kapat">×</button><a class="logo" href="#" aria-label="Satır ana sayfa">satır<span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span></a><h2>${mode === "login" ? "Yeniden merhaba." : "Senin hikâyen burada."}</h2><p class="sub">${mode === "login" ? "Kaldığın satırdan devam et." : "Okumak, yazmak ve yeni bakış açıları keşfetmek için katıl."}</p><form id="auth-form" data-mode="${mode}">${mode === "register" ? '<label>Adın<input name="name" required maxlength="80" autocomplete="name"></label>' : ""}<label>E-posta<input type="email" name="email" required maxlength="254" autocomplete="email"></label><label>Şifre<input type="password" name="password" required minlength="${mode === "register" ? 10 : 1}" maxlength="72" autocomplete="${mode === "register" ? "new-password" : "current-password"}"></label>${mode === "register" ? '<small class="sub">Okuyucu hesabıyla keşfet, kaydet ve yorum yap. Yazar hesaplarını yalnızca yönetici oluşturur. Şifren en az 10 karakter olmalı. Hesabını kullanmak için e-posta adresini doğrulaman gerekir.</small>' : ""}<p class="error" id="auth-error" role="alert"></p><button class="btn">${mode === "login" ? "Giriş yap" : "Hesap oluştur"}</button></form><button class="switch" data-action="${mode === "login" ? "register" : "login"}">${mode === "login" ? "Henüz hesabın yok mu? Aramıza katıl." : "Zaten hesabın var mı? Giriş yap."}</button>`;
   if (!modal.open) modal.showModal();
+  if (mode === "login")
+    modal.insertAdjacentHTML(
+      "beforeend",
+      '<button class="switch" data-action="verify-email">E-postamı doğrula / yeni bağlantı iste</button>',
+    );
+}
+function verificationNotice(email) {
+  modal.innerHTML = `<button class="close" data-action="close" aria-label="Kapat">×</button><h2>E-postanı kontrol et.</h2><p class="sub"><strong>${esc(email)}</strong> adresine doğrulama bağlantısı gönderdik. Bağlantı 30 dakika geçerli. Gelen kutuna ulaşmadıysa spam klasörünü de kontrol et.</p><p class="notice">Doğrulama bağlantısını açıp adresini onayladıktan sonra giriş yapabilirsin.</p><button class="btn" data-action="login">Giriş ekranına dön</button><button class="switch" data-action="verify-email" data-email="${esc(email)}">Yeni bağlantı iste</button>`;
+  if (!modal.open) modal.showModal();
+}
+function verificationRequest(email = "") {
+  modal.innerHTML = `<button class="close" data-action="close" aria-label="Kapat">×</button><h2>E-postanı doğrula.</h2><p class="sub">Hesabına ait e-posta adresini yaz. Doğrulama bağlantısını yeniden gönderelim.</p><form id="verification-request"><label>E-posta<input name="email" type="email" autocomplete="email" required maxlength="254" value="${esc(email)}"></label><p class="error" role="alert"></p><p class="notice" role="status" hidden></p><button class="btn">Bağlantı gönder</button></form><button class="switch" data-action="login">Giriş ekranına dön</button>`;
+  if (!modal.open) modal.showModal();
+}
+function verifyPage(token) {
+  document.title = "E-posta doğrulama | Satır";
+  const valid = /^[0-9a-f]{64}$/.test(token || "");
+  app.innerHTML = `<section class="editor info-page"><h1>E-posta adresini doğrula.</h1><p class="sub">${valid ? "Hesabını kullanmaya başlamak için aşağıdaki düğmeyle e-posta adresini onayla." : "E-postandaki doğrulama bağlantısını aç veya yeni bir bağlantı iste."}</p>${valid ? `<form id="verification-form"><input type="hidden" name="token" value="${esc(token)}"><p class="error" role="alert"></p><button class="btn">E-posta adresimi doğrula</button></form>` : ""}<div class="article-actions"><button class="btn light" data-action="verify-email">Yeni bağlantı iste</button><a class="btn light" href="#">Ana sayfa</a></div></section>`;
 }
 async function writers(version = viewVersion) {
   if (user?.role !== "ADMIN") {
@@ -207,12 +233,16 @@ async function writers(version = viewVersion) {
   const members = await api("/admin/writers");
   if (version !== viewVersion) return;
   document.title = "Yazarlar | Satır";
-  app.innerHTML = `<section class="editor admin-page"><a class="sub" href="#">← Ana sayfa</a><div class="eyebrow article-kicker">YÖNETİCİ PANELİ</div><h1>Yazarlar</h1><p class="sub">Yayın ekibini buradan oluştur. Yazarlar kendi yazılarını ekleyip düzenleyebilir; hesap yönetimine erişemez.</p><div class="admin-grid"><section class="admin-box"><h2>Yeni yazar ekle</h2><form id="writer-form"><label>Ad soyad<input name="name" required maxlength="80" autocomplete="off"></label><label>E-posta<input name="email" type="email" required maxlength="254" autocomplete="off"></label><label>İlk şifre<input name="password" type="password" required minlength="10" maxlength="72" autocomplete="new-password"></label><p class="sub">Giriş bilgilerini yazara güvenli bir kanaldan ilet. Bu işlem e-posta göndermez.</p><p class="error" role="alert"></p><button class="btn">Yazar hesabı oluştur</button></form></section><section class="admin-box"><h2>Okuyucuyu yazar yap</h2><p class="sub">Zaten kayıtlı bir okuyucuya mevcut hesabıyla yazma yetkisi ver.</p><form id="promote-form"><label>Okuyucunun e-postası<input name="email" type="email" required maxlength="254"></label><p class="error" role="alert"></p><button class="btn light">Yazar yetkisi ver</button></form><p class="sub">Kullanıcı menüsünün güncellenmesi için yeniden giriş yapabilir.</p></section></div><h2>Yayın ekibi · ${members.length}</h2><div class="writer-list">${members.map((m) => `<div class="writer-row"><span class="avatar">${esc(m.name[0])}</span><div><strong>${esc(m.name)}</strong><small>${esc(m.email)}</small></div><span class="badge">Yazar</span></div>`).join("") || '<p class="empty">Henüz yazar eklenmedi.</p>'}</div></section>`;
+  app.innerHTML = `<section class="editor admin-page"><a class="sub" href="#">← Ana sayfa</a><div class="eyebrow article-kicker">YÖNETİCİ PANELİ</div><h1>Yazarlar</h1><p class="sub">Yayın ekibini buradan oluştur. Yazarlar kendi yazılarını ekleyip düzenleyebilir; hesap yönetimine erişemez.</p><div class="admin-grid"><section class="admin-box"><h2>Yeni yazar ekle</h2><form id="writer-form"><label>Ad soyad<input name="name" required maxlength="80" autocomplete="off"></label><label>E-posta<input name="email" type="email" required maxlength="254" autocomplete="off"></label><label>İlk şifre<input name="password" type="password" required minlength="10" maxlength="72" autocomplete="new-password"></label><p class="sub">Giriş bilgilerini yazara güvenli bir kanaldan ilet. Yazar, giriş yapmadan önce gönderilen bağlantıyla e-posta adresini doğrulamalı.</p><p class="error" role="alert"></p><button class="btn">Yazar hesabı oluştur</button></form></section><section class="admin-box"><h2>Okuyucuyu yazar yap</h2><p class="sub">Zaten kayıtlı bir okuyucuya mevcut hesabıyla yazma yetkisi ver.</p><form id="promote-form"><label>Okuyucunun e-postası<input name="email" type="email" required maxlength="254"></label><p class="error" role="alert"></p><button class="btn light">Yazar yetkisi ver</button></form><p class="sub">Kullanıcı menüsünün güncellenmesi için yeniden giriş yapabilir.</p></section></div><h2>Yayın ekibi · ${members.length}</h2><div class="writer-list">${members.map((m) => `<div class="writer-row"><span class="avatar">${esc(m.name[0])}</span><div><strong>${esc(m.name)}</strong><small>${esc(m.email)}</small></div><span class="badge">${m.email_verified ? "Yazar" : "Doğrulama bekliyor"}</span></div>`).join("") || '<p class="empty">Henüz yazar eklenmedi.</p>'}</div></section>`;
 }
 async function login(email, password) {
   const c = await api("/csrf");
   const r = await fetch("/api/login", {
     method: "POST",
+    signal:
+      typeof AbortSignal.timeout === "function"
+        ? AbortSignal.timeout(20000)
+        : undefined,
     headers: {
       [c.header]: c.token,
       "Content-Type": "application/x-www-form-urlencoded",
@@ -222,7 +252,15 @@ async function login(email, password) {
       password,
     }),
   });
-  if (!r.ok) throw Error("E-posta veya şifre yanlış.");
+  if (!r.ok) {
+    const failure = await r.json().catch(() => ({}));
+    throw Error(
+      failure.message ||
+        (r.status === 429
+          ? "Çok fazla giriş denemesi yapıldı. Biraz sonra yeniden dene."
+          : "E-posta veya şifre yanlış."),
+    );
+  }
   user = await api("/me");
   saved = new Set((await api("/bookmarks")).map((p) => p.id));
   account();
@@ -359,6 +397,8 @@ async function route() {
     else if (hash === "writers") await writers(version);
     else if (hash === "account") accountPage();
     else if (hash === "about") aboutPage();
+    else if (hash === "verify")
+      verifyPage(new URLSearchParams(params).get("token"));
     else if (hash === "write") editor();
     else if (hash.startsWith("edit/")) {
       const p = await api("/posts/" + hash.slice(5));
@@ -412,6 +452,11 @@ document.addEventListener("click", async (e) => {
     switch (b.dataset.action) {
       case "login":
         auth();
+        break;
+      case "verify-email":
+        verificationRequest(
+          b.dataset.email || modal.querySelector('[name="email"]')?.value || "",
+        );
         break;
       case "register":
         auth("register");
@@ -500,6 +545,8 @@ document.addEventListener("submit", async (e) => {
       "promote-form",
       "editor-form",
       "comment-form",
+      "verification-form",
+      "verification-request",
     ].includes(e.target.id)
   )
     return;
@@ -519,8 +566,9 @@ document.addEventListener("submit", async (e) => {
     if (f.id === "auth-form") {
       if (f.dataset.mode === "register") {
         await api("/register", "POST", data);
-        f.dataset.mode = "login";
-        if (submit) submit.textContent = "Giriş yap";
+        afterLogin = null;
+        verificationNotice(data.email.trim());
+        return;
       }
       await login(data.email, data.password);
       const pending = afterLogin;
@@ -529,10 +577,26 @@ document.addEventListener("submit", async (e) => {
       await route();
       if (pending) await pending();
       toast("Hoş geldin, " + user.name + ".");
+    } else if (f.id === "verification-request") {
+      const result = await api("/email/resend", "POST", {
+        email: data.email.trim(),
+      });
+      const notice = f.querySelector('[role="status"]');
+      notice.hidden = false;
+      notice.textContent = result.message;
+    } else if (f.id === "verification-form") {
+      await api("/email/verify", "POST", { token: data.token });
+      history.replaceState(
+        null,
+        "",
+        location.pathname + location.search + "#verify",
+      );
+      app.innerHTML =
+        '<section class="editor info-page"><h1>E-posta adresin doğrulandı.</h1><p class="sub">Artık hesabına giriş yapabilirsin.</p><div class="article-actions"><button class="btn" data-action="login">Giriş yap</button><a class="btn light" href="#">Yazıları keşfet</a></div></section>';
     } else if (f.id === "writer-form") {
       await api("/admin/writers", "POST", data);
       await writers();
-      toast("Yazar hesabı oluşturuldu.");
+      toast("Yazar hesabı oluşturuldu. Doğrulama e-postası gönderildi.");
     } else if (f.id === "promote-form") {
       await api("/admin/writers/promote", "POST", data);
       await writers();
