@@ -432,3 +432,102 @@ test("Eski sayfalama isteğinin hatası yeni sayfanın numarasını değiştirme
   assert.equal(h.getPage(), 0);
   assert.match(d.title, /Teknoloji/);
 });
+
+test("Kayıt sonrası doğrulama beklenir, parola tutulmaz ve otomatik giriş yapılmaz", async (t) => {
+  const { h, d, w } = setup(t);
+  let logins = 0;
+  w.fetch = async () => {
+    logins++;
+    throw Error("Doğrulamadan giriş yapılmamalı");
+  };
+  h.setApi(async () => ({ id: "pending", verificationRequired: true }));
+  d.querySelector('[data-action="register"]').click();
+  await settle();
+  const f = d.querySelector("#auth-form");
+  f.elements.name.value = "Yeni Okur";
+  f.elements.email.value = "reader@example.test";
+  f.elements.password.value = "safe-password-123";
+  submit(w, f, f.querySelector("button"));
+  await settle();
+  assert.match(d.querySelector("#modal").textContent, /E-postanı kontrol et/);
+  assert.equal(d.querySelector('#modal [name="password"]'), null);
+  assert.equal(logins, 0);
+});
+test("E-posta bağlantısı onay düğmesine basılmadan tüketilmez ve başarıda adres çubuğundan temizlenir", async (t) => {
+  const { h, d, w } = setup(t);
+  const token = "a".repeat(64),
+    calls = [];
+  h.setApi(async (url, method, data) => {
+    calls.push({ url, method, data });
+    return { message: "Doğrulandı" };
+  });
+  await h.navigate("verify?token=" + token);
+  assert.equal(calls.length, 0);
+  const f = d.querySelector("#verification-form");
+  submit(w, f, f.querySelector("button"));
+  await settle();
+  assert.equal(calls[0].url, "/email/verify");
+  assert.equal(calls[0].data.token, token);
+  assert.equal(w.location.hash, "#verify");
+  assert.match(
+    d.querySelector("#app").textContent,
+    /E-posta adresin doğrulandı/,
+  );
+});
+test("Süresi dolan doğrulama bağlantısı hatayı gösterir ve yeni bağlantı istenebilir", async (t) => {
+  const { h, d, w } = setup(t);
+  h.setApi(async () => {
+    throw Error("Bağlantının süresi dolmuş.");
+  });
+  await h.navigate("verify?token=" + "b".repeat(64));
+  const f = d.querySelector("#verification-form");
+  submit(w, f, f.querySelector("button"));
+  await settle();
+  assert.match(f.querySelector(".error").textContent, /süresi dolmuş/);
+  d.querySelector('[data-action="verify-email"]').click();
+  await settle();
+  assert.ok(d.querySelector("#verification-request"));
+});
+test("Yeni doğrulama bağlantısı isteği geri bildirimi gösterir", async (t) => {
+  const { h, d, w } = setup(t);
+  h.setApi(async () => ({ message: "Hesap varsa yeni bağlantı gönderildi." }));
+  await h.navigate("verify");
+  d.querySelector('[data-action="verify-email"]').click();
+  await settle();
+  const f = d.querySelector("#verification-request");
+  f.elements.email.value = "reader@example.test";
+  submit(w, f, f.querySelector("button"));
+  await settle();
+  assert.equal(f.querySelector('[role="status"]').hidden, false);
+  assert.match(f.textContent, /yeni bağlantı gönderildi/);
+});
+test("Yazı başlığı, gövde, arama ve yorumlarda HTML çalıştırılmaz", async (t) => {
+  const { h, d } = setup(t);
+  const attack = '<img src=x onerror="alert(1)">';
+  h.setApi(async (url) =>
+    url.endsWith("/comments")
+      ? [{ author_name: attack, body: attack, created_at: sample.created_at }]
+      : url.startsWith("/posts/")
+        ? { ...sample, title: attack, body: attack, author_name: attack }
+        : [{ ...sample, title: attack, summary: attack, author_name: attack }],
+  );
+  await h.navigate("search?q=" + encodeURIComponent(attack));
+  assert.equal(d.querySelector("#app img"), null);
+  await h.navigate("post/post-one");
+  assert.equal(d.querySelector("#app img"), null);
+  assert.match(d.querySelector(".body").textContent, /<img/);
+  assert.match(d.querySelector("#comments").textContent, /<img/);
+});
+test("Tema tercihi hatırlanır, açık/koyu düğmesi erişilebilir durumunu günceller", async (t) => {
+  const { d, w } = setup(t);
+  w.localStorage.setItem("satir-theme", "light");
+  w.matchMedia = () => ({ matches: true, addEventListener() {} });
+  w.eval(fs.readFileSync(path.join(root, "theme.js"), "utf8"));
+  await settle();
+  const button = d.querySelector("#theme-toggle");
+  assert.equal(d.documentElement.dataset.theme, "light");
+  button.click();
+  assert.equal(d.documentElement.dataset.theme, "dark");
+  assert.equal(button.getAttribute("aria-label"), "Açık moda geç");
+  assert.equal(w.localStorage.getItem("satir-theme"), "dark");
+});
