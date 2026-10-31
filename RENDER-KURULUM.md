@@ -1,34 +1,47 @@
-# Render üzerinden canlıya alma
+# Ücretsiz yayın: Render + Neon
 
-Uygulama Render'da **bir Docker Web Service ve bir PostgreSQL** ile çalışır. Frontend Spring tarafından sunulduğu için ayrıca Static Site açılmaz. VPS veya kendi alan adın şart değil; Render'ın verdiği HTTPS `onrender.com` adresiyle başlayabilirsin.
+Frontend ve Spring backend **aynı ücretsiz Render Web Service** üzerinden sunulur. Yazılar, hesaplar, yorumlar ve okuma listeleri **Neon Free PostgreSQL** içinde tutulur. Ayrı bir frontend servisi veya alan adı gerekmez. Render'ın verdiği HTTPS adresini kullanabilirsin.
 
-## Blueprint ile kurulum
+## Hesap bağlantıları
 
-1. Kaynak ZIP'indeki `satir/` klasörünün **içeriğini** GitHub deposunun köküne yükle. `pom.xml`, `Dockerfile`, `render.yaml` aynı kökte olmalı. `.env`, `data/`, `target/` veya çalışma klasöründeki veritabanını Git'e ekleme.
-2. Render'da **New → Blueprint** seçip depoyu bağla. `render.yaml` dosyası uygulama ve veritabanını aynı bölgede tanımlar.
-3. İlk kurulumun istediği `ADMIN_EMAIL` ve `ADMIN_PASSWORD` değerlerini yalnız Render'ın ortam değişkenleri ekranına gir. Kullanılmamış bir e-posta ve en az 10 karakter, UTF-8 olarak en fazla 72 bayt şifre seç. Burada veya GitHub kaynak dosyalarında gerçek şifre paylaşma.
-4. Şablon **ücretli** web servisi ve PostgreSQL seçer. Kaynakları oluşturmadan önce Render'ın gösterdiği toplam maliyeti kontrol et. Bu dosyayı hazırlamak herhangi bir kaynak veya abonelik oluşturmaz.
-5. Deploy tamamlanınca Render'ın verdiği HTTPS adresini aç. **Giriş yap** üzerinden admin hesabınla gir. **Yazarlar** menüsünden yeni yazar oluşturabilir veya mevcut okuyucuyu yazar yapabilirsin.
+Otomatik kurulum için Render ve Neon bağlantılarını bu sohbette tamamla. İki hizmette de **Free** planı kullanılmalıdır; ödeme bilgisi veya ücretli plan eklenmez. Kurulum araçları erişim verene kadar kaynak oluşturulduğu veya yayının tamamlandığı varsayılmaz.
 
-Render'ın `PORT` değeri otomatik kullanılır. Veritabanı bağlantı bilgileri Blueprint tarafından eklenir; `render` profili Render'ın PostgreSQL URL'sini JDBC biçimine çevirir. Bağlantı TLS kullanır. Admin parolası BCrypt özetiyle veritabanına yazılır. Yeni yazar oluşturulması e-posta göndermez; giriş bilgilerini yazara sen iletirsin.
+## Kurulum sırası
 
-## Admin hesabının yaşam döngüsü
+1. Neon hesabında Free plan altında `satir` PostgreSQL projesi oluştur. Uygulama için veritabanı, kullanıcı ve bağlantı bilgilerini al. Bölgeyi mümkünse Frankfurt seç.
+2. Render'da GitHub'daki `YorukMustafa/satir` deposundan `render.yaml` Blueprint'ini kur. Dosya yalnızca `plan: free` web servisi tanımlar; ücretli veritabanı kaynağı içermez.
+3. Aşağıdaki değerleri Render'ın **Environment** bölümüne gizli ortam değişkeni olarak ekle. Gerçek şifreleri GitHub'a, dosyalara veya bu kılavuza yazma.
 
-İlk admin, henüz hiçbir admin yokken ve iki `ADMIN_*` değişkeni tanımlıyken oluşturulur. Sonraki deploy'larda mevcut adminin şifresi veya hesabı değiştirilmez. Ortam değişkenini değiştirmek şifre sıfırlama işlemi değildir. İlk oluşturma sonrası iki değişkeni Render'dan kaldırabilirsin; veritabanındaki admin korunur. Otomatik şifre sıfırlama bu sürümde yoktur.
+| Değişken | İçerik |
+|---|---|
+| RENDER_DATABASE_URL | Neon'un verdiği `postgresql://...` bağlantı adresi |
+| DATABASE_USER | Neon veritabanı kullanıcısı |
+| DATABASE_PASSWORD | Neon veritabanı şifresi |
+| ADMIN_EMAIL | Siteye ilk admin olarak gireceğin e-posta |
+| ADMIN_PASSWORD | En az 10 karakter, UTF-8 olarak en fazla 72 bayt ilk admin şifresi |
 
-## Ücretsiz deneme
+`SPRING_PROFILES_ACTIVE=render`, `COOKIE_SECURE=true` ve Java bellek ayarları Blueprint içinde hazırdır. `render` profili PostgreSQL bağlantısını JDBC biçimine dönüştürür ve TLS kullanır. Bu sırada veritabanı şeması Flyway ile otomatik kurulur.
 
-Ücretsiz deneme için `render.yaml` içindeki **her iki** `plan` değerini `free` yapabilirsin. Ücretsiz web servisi 15 dakika hareketsizlikte uyur, ilk açılış gecikebilir. Ücretsiz PostgreSQL 30 gün sonra sona erer ve yedekleme sağlamaz. Kalıcı yayın için süre sınırı olmayan uygun veritabanı planını seç. Yerel H2 dosyasını Render'da kalıcı veri deposu olarak kullanma: servisin dosya sistemi yeniden dağıtımda silinir.
+4. Render deploy'unun tamamlanmasını bekle ve verilen HTTPS adresini aç.
+5. Sağ üstteki **Giriş yap** üzerinden admin bilgilerinle giriş yap. **Yazarlar** bölümünden yazar oluştur veya okuyucuya yazar yetkisi ver.
 
-## Güncelleme ve kontrol
+## İlk admin ve yazar girişi
 
-GitHub'a güncelleme gönderildiğinde Render servisi yeniden derler. Docker build aşaması testleri çalıştırır. İlk erişimde ana sayfanın oturumsuz açıldığını, normal kayıtla içerik yayımlanamadığını, yazarın Yazarlar bölümüne erişemediğini ve adminin yazar ekleyebildiğini kontrol et. Yeniden başlatmada uygulama oturumları biter; yazılar ve hesaplar PostgreSQL'de korunur.
+Siteye üye olmak okuyucu hesabı açar. Yazarları yalnızca admin ekler. İlk admin, hiç admin yokken ADMIN_EMAIL ve ADMIN_PASSWORD ile oluşturulur. Sonraki deploy'larda bu değerler mevcut hesabı veya parolayı değiştirmez. İlk oluşturma sonrası admin ortam değişkenlerini kaldırabilirsin; hesap Neon'da korunur. Şifre sıfırlama akışı bu sürümde bulunmaz.
 
-Bu çalışma sırasında Render hesabına bağlanılmadı; ücretli servis oluşturulmadı ve dış dağıtım yapılmadı. Blueprint yerel şema kontrolünden geçirildi; Render üzerinde çalıştırılarak doğrulanmadı.
+## Ücretsiz planların sınırları
 
-Resmi kaynaklar (28 Ekim 2026):
+Render Free web servisi 15 dakika hareketsizlikte uyur; ilk açılış gecikebilir. Render'ın yerel dosyaları kalıcı değildir. Bu nedenle H2 dosyası yerine Neon PostgreSQL kullanılır. Neon Free planı süre sınırı olmadan sunulur; depolama ve aylık işlem/aktarım kotaları vardır. Kotalar dolarsa ücretli plana otomatik geçilmez; hizmeti durdurmak veya kullanımı azaltmak gerekir. Planlarını Free olarak koru.
 
-- [Blueprint yapılandırması](https://render.com/docs/blueprint-spec)
-- [PostgreSQL bağlantısı](https://render.com/docs/postgresql-creating-connecting)
-- [Ücretsiz plan sınırları](https://render.com/docs/free)
-- [Plan kimlikleri](https://render.com/docs/compute-plans)
+Render'ın kendi Free PostgreSQL hizmeti 30 gün sonra sona erdiği için bu yapılandırmada kullanılmıyor. Ücretsiz servisler erişilebilirlik garantisi sağlamaz.
+
+## Kontroller
+
+Yayın sonrasında ana sayfa ve kategoriler oturumsuz açılmalı; admin girişi, yazar ekleme, yazı yayımlama, yorum ve okuma listesi denenmeli. Bir deploy/yeniden başlatma sonrası yazıların ve hesapların korunması kontrol edilmeli. Uygulama oturumları yeniden başlatmada bitebilir; kullanıcı tekrar giriş yapar.
+
+Bu kılavuzun güncellendiği aşamada Render ve Neon hesap bağlantıları bekleniyor; canlı URL henüz oluşturulmadı.
+
+Resmi kaynaklar (31 Ekim 2026):
+- https://render.com/docs/free
+- https://render.com/docs/blueprint-spec
+- https://neon.com/pricing

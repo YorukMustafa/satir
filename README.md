@@ -105,7 +105,7 @@ V2 migration eski serbest kayıt WRITER hesaplarını READER yapar; hesaplar ve 
 
 ## Render
 
-Adım adım kurulum için [RENDER-KURULUM.md](RENDER-KURULUM.md). Hazır `render.yaml` ücretli web servisi ve PostgreSQL tanımlar; kaynak oluştururken Render'ın gösterdiği ücreti kontrol et. Henüz canlı dağıtım yapılmadı.
+Adım adım kurulum için [RENDER-KURULUM.md](RENDER-KURULUM.md). Hazır `render.yaml` yalnızca ücretsiz Render web servisi tanımlar. Veritabanı Neon Free PostgreSQL olarak bağlanır. Henüz canlı dağıtım yapılmadı.
 
 ## Arayüz kontrolleri
 
@@ -119,3 +119,7 @@ npm test
 ```
 
 Bu kontroller uygulamanın Node backend kullandığı anlamına gelmez; dağıtım Java/Docker ile çalışır.
+
+## Ücretsiz yayın yapılandırması — 31 Ekim 2026
+
+Frontend ve backend tek Render Free servisi üzerinde; kalıcı veriler Neon Free PostgreSQL üzerinde çalışacak şekilde ayarlandı. Ücretli kaynak tanımı kaldırıldı. Bağlantı bilgileri ve ilk admin hesabı Render ortam değişkenlerinden alınır. Adımlar [RENDER-KURULUM.md](RENDER-KURULUM.md) içinde. Render/Neon bağlantısı ve dağıtım tamamlanmadan canlı yayın yapılmış sayılmaz.
